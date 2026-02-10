@@ -7,7 +7,7 @@ import { CompletenessHeatmap } from "./CompletenessHeatmap";
 import { DataQuality } from "./DataQuality";
 import { DetailTable } from "./DetailTable";
 import { VillageDrawer } from "./VillageDrawer";
-import { AlertsPanel } from "./AlertsPanel";
+import { LLINGapPanel } from "./LLINGapPanel";
 
 export function MonitoringTab() {
   const [selectedVillage, setSelectedVillage] = useState<ComputedVillage | null>(null);
@@ -28,11 +28,15 @@ export function MonitoringTab() {
         <DataQuality />
       </div>
 
-      <AlertsPanel />
+      <LLINGapPanel />
 
       <DetailTable onViewVillage={setSelectedVillage} />
 
-      <VillageDrawer village={selectedVillage} open={!!selectedVillage} onClose={() => setSelectedVillage(null)} />
+      <VillageDrawer
+        village={selectedVillage}
+        open={!!selectedVillage}
+        onClose={() => setSelectedVillage(null)}
+      />
     </div>
   );
 }
