@@ -1,13 +1,32 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { FilterProvider } from "@/hooks/useFilters";
+import { Header } from "@/components/dashboard/Header";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { MonitoringTab } from "@/components/dashboard/MonitoringTab";
+import { SummaryTab } from "@/components/dashboard/SummaryTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <FilterProvider>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <FilterBar />
+        <main className="flex-1 container mx-auto px-4 py-4">
+          <Tabs defaultValue="monitoring">
+            <TabsList className="mb-4">
+              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+            </TabsList>
+            <TabsContent value="monitoring">
+              <MonitoringTab />
+            </TabsContent>
+            <TabsContent value="summary">
+              <SummaryTab />
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
-    </div>
+    </FilterProvider>
   );
 };
 
