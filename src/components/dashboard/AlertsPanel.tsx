@@ -1,47 +1,232 @@
+import { useMemo } from "react";
 import { useFilters } from "@/hooks/useFilters";
-import { AlertTriangle } from "lucide-react";
+import { computeAggregateAPI } from "@/lib/computations";
 import { Badge } from "@/components/ui/badge";
+import { Package, ArrowDownRight, ShieldAlert } from "lucide-react";
 
-export function AlertsPanel() {
-  const { alerts } = useFilters();
+type LLINGapItem = {
+  village_code: string;
+  village_name_en?: string;
+  union?: string;
+  upazila?: string;
+  population: number;
+  active_llin: number;
+  llin_per_1000: number;
+  api: number;
+  type: "Low LLIN coverage" | "High API + Low LLIN" | "Missing LLIN/Pop";
+  severity: "high" | "medium" | "low";
+  message: string;
+};
 
-  if (alerts.length === 0) return null;
+function getActiveLLIN(v: any, year: number) {
+  if (year === 2026) return Number(v.active_llin_2026 ?? 0);
+  if (year === 2025) return Number(v.active_llin_2025 ?? 0);
+  if (year === 2024) return Number(v.active_llin_2024 ?? 0);
+  return 0;
+}
 
-  const grouped = alerts.reduce((acc, a) => {
-    acc[a.type] = (acc[a.type] || 0) + 1;
+export function LLINGapPanel() {
+  const { filters, filteredVillages } = useFilters();
+
+  // Thresholds (tune later if needed)
+  // LLIN per 1,000 population:
+  // - 500 = 0.5 LLIN per person (very rough signal for gap spotting, not a coverage standard)
+  const LOW_LLIN_PER_1000 = 500;
+  const VERY_LOW_LLIN_PER_1000 = 350;
+  const HIGH_API = 10;
+
+  const year = filters.year;
+
+  const items = useMemo<LLINGapItem[]>(() => {
+    if (!filteredVillages.length) return [];
+
+    // Compute API across the filtered set (we also want per-village approximations)
+    // If you already have api_2026/api_2025/api_2024 on each village, use that instead.
+    // Here we approximate per-village API using the same aggregate computation helper,
+    // by running it per row via a single-item list.
+    const out: LLINGapItem[] = [];
+
+    for (const v of filteredVillages as any[]) {
+      const pop = Number(v.population ?? 0);
+      const llin = getActiveLLIN(v, year);
+
+      const popMissing = !pop || pop <= 0;
+      const llinMissing = v[`active_llin_${year}`] == null;
+
+      const api = popMissing
+        ? 0
+        : computeAggregateAPI([v], year, filters.monthStart, filters.monthEnd);
+
+      const llinPer1000 = popMissing ? 0 : (llin / pop) * 1000;
+
+      // Missing essentials
+      if (popMissing || llinMissing) {
+        out.push({
+          village_code: String(v.village_code ?? "UNKNOWN"),
+          village_name_en: v.village_name_en,
+          union: v.union,
+          upazila: v.upazila,
+          population: pop,
+          active_llin: llin,
+          llin_per_1000: llinPer1000,
+          api,
+          type: "Missing LLIN/Pop",
+          severity: "medium",
+          message: popMissing
+            ? "Population missing or invalid (cannot assess LLIN coverage)."
+            : `Active LLINs (${year}) missing.`,
+        });
+        continue;
+      }
+
+      // High API + Low LLIN (priority)
+      if (api >= HIGH_API && llinPer1000 < LOW_LLIN_PER_1000) {
+        out.push({
+          village_code: String(v.village_code ?? "UNKNOWN"),
+          village_name_en: v.village_name_en,
+          union: v.union,
+          upazila: v.upazila,
+          population: pop,
+          active_llin: llin,
+          llin_per_1000: llinPer1000,
+          api,
+          type: "High API + Low LLIN",
+          severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "medium",
+          message: `API ${api.toFixed(1)} with low LLIN coverage (${llinPer1000.toFixed(
+            0
+          )}/1000).`,
+        });
+        continue;
+      }
+
+      // Low LLIN coverage (general gap)
+      if (llinPer1000 < LOW_LLIN_PER_1000) {
+        out.push({
+          village_code: String(v.village_code ?? "UNKNOWN"),
+          village_name_en: v.village_name_en,
+          union: v.union,
+          upazila: v.upazila,
+          population: pop,
+          active_llin: llin,
+          llin_per_1000: llinPer1000,
+          api,
+          type: "Low LLIN coverage",
+          severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "low",
+          message: `LLIN coverage is low (${llinPer1000.toFixed(0)}/1000).`,
+        });
+      }
+    }
+
+    // Sort: highest severity first, then High API + Low LLIN first, then lowest LLIN per 1000
+    const sevRank: Record<LLINGapItem["severity"], number> = {
+      high: 3,
+      medium: 2,
+      low: 1,
+    };
+    const typeRank: Record<LLINGapItem["type"], number> = {
+      "High API + Low LLIN": 3,
+      "Low LLIN coverage": 2,
+      "Missing LLIN/Pop": 1,
+    };
+
+    return out.sort((a, b) => {
+      const s = sevRank[b.severity] - sevRank[a.severity];
+      if (s !== 0) return s;
+      const t = typeRank[b.type] - typeRank[a.type];
+      if (t !== 0) return t;
+      return a.llin_per_1000 - b.llin_per_1000;
+    });
+  }, [filteredVillages, filters.monthStart, filters.monthEnd, year]);
+
+  if (items.length === 0) return null;
+
+  const grouped = items.reduce((acc, it) => {
+    acc[it.type] = (acc[it.type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const top10 = alerts.slice(0, 10);
+  const top10 = items.slice(0, 10);
 
   return (
     <div className="panel">
       <div className="panel-header">
         <span className="panel-title flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-          Alerts ({alerts.length})
+          <Package className="h-3.5 w-3.5 text-foreground" />
+          LLIN Coverage & Gaps ({items.length})
         </span>
+
         <div className="flex gap-2 text-[10px]">
           {Object.entries(grouped).map(([type, count]) => (
-            <span key={type} className="text-muted-foreground">{type}: {count}</span>
+            <span key={type} className="text-muted-foreground">
+              {type}: {count}
+            </span>
           ))}
         </div>
       </div>
+
       <div className="panel-body">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
-          {top10.map((a, i) => (
-            <div key={i} className="flex items-start gap-2 p-2 rounded border border-border text-xs">
-              <Badge variant="outline" className={`text-[9px] shrink-0 ${a.severity === "high" ? "alert-badge-high" : a.severity === "medium" ? "alert-badge-medium" : "alert-badge-low"}`}>
-                {a.severity}
+          {top10.map((it, i) => (
+            <div
+              key={`${it.village_code}-${i}`}
+              className="flex items-start gap-2 p-2 rounded border border-border text-xs"
+            >
+              <Badge
+                variant="outline"
+                className={`text-[9px] shrink-0 ${
+                  it.severity === "high"
+                    ? "alert-badge-high"
+                    : it.severity === "medium"
+                    ? "alert-badge-medium"
+                    : "alert-badge-low"
+                }`}
+              >
+                {it.severity}
               </Badge>
-              <div>
-                <div className="font-medium text-[11px]">{a.village_code}</div>
-                <div className="text-muted-foreground text-[10px]">{a.message}</div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  {it.type === "High API + Low LLIN" ? (
+                    <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
+                  ) : (
+                    <ArrowDownRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <div className="font-medium text-[11px] truncate">
+                    {it.village_code}
+                    {it.village_name_en ? ` • ${it.village_name_en}` : ""}
+                  </div>
+                </div>
+
+                <div className="text-muted-foreground text-[10px] mt-0.5">
+                  {it.upazila ? `${it.upazila}` : ""}
+                  {it.union ? `, ${it.union}` : ""}
+                </div>
+
+                <div className="text-muted-foreground text-[10px] mt-1">
+                  {it.message}
+                </div>
+
+                <div className="text-[10px] mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
+                  <span>LLIN: {it.active_llin.toLocaleString()}</span>
+                  <span>
+                    LLIN/1000: {Number.isFinite(it.llin_per_1000) ? it.llin_per_1000.toFixed(0) : "—"}
+                  </span>
+                  <span>API: {it.api.toFixed(1)}</span>
+                </div>
               </div>
             </div>
           ))}
         </div>
-        {alerts.length > 10 && <p className="text-[10px] text-muted-foreground mt-2">+ {alerts.length - 10} more alerts</p>}
+
+        {items.length > 10 && (
+          <p className="text-[10px] text-muted-foreground mt-2">
+            + {items.length - 10} more villages with LLIN gaps
+          </p>
+        )}
+
+        <div className="mt-3 text-[10px] text-muted-foreground">
+          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}. (Adjust later if needed.)
+        </div>
       </div>
     </div>
   );
