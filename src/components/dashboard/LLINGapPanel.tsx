@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useFilters } from "@/hooks/useFilters";
-import { computeAggregateAPI } from "@/lib/computations";
 import { Badge } from "@/components/ui/badge";
-import { Package, ArrowDownRight, ShieldAlert } from "lucide-react";
+import { Package, ArrowDownRight, AlertTriangle } from "lucide-react";
 
 type LLINGapItem = {
   village_code: string;
@@ -18,45 +17,66 @@ type LLINGapItem = {
   message: string;
 };
 
+function toNum(x: any, fallback = 0) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function getActiveLLIN(v: any, year: number) {
-  if (year === 2026) return Number(v.active_llin_2026 ?? 0);
-  if (year === 2025) return Number(v.active_llin_2025 ?? 0);
-  if (year === 2024) return Number(v.active_llin_2024 ?? 0);
+  if (year === 2026) return toNum(v.active_llin_2026);
+  if (year === 2025) return toNum(v.active_llin_2025);
+  if (year === 2024) return toNum(v.active_llin_2024);
+  return 0;
+}
+
+function getYearTotalCases(v: any, year: number) {
+  if (year === 2026) {
+    // Sum Jan–Dec if present; treat missing as 0 for total calculation
+    const months = [
+      "cases_2026_jan",
+      "cases_2026_feb",
+      "cases_2026_mar",
+      "cases_2026_apr",
+      "cases_2026_may",
+      "cases_2026_jun",
+      "cases_2026_jul",
+      "cases_2026_aug",
+      "cases_2026_sep",
+      "cases_2026_oct",
+      "cases_2026_nov",
+      "cases_2026_dec",
+    ];
+    return months.reduce((s, k) => s + toNum(v[k]), 0);
+  }
+  if (year === 2025) return toNum(v.cases_2025_total);
+  if (year === 2024) return toNum(v.cases_2024_total);
   return 0;
 }
 
 export function LLINGapPanel() {
   const { filters, filteredVillages } = useFilters();
 
-  // Thresholds (tune later if needed)
-  // LLIN per 1,000 population:
-  // - 500 = 0.5 LLIN per person (very rough signal for gap spotting, not a coverage standard)
-  const LOW_LLIN_PER_1000 = 500;
+  // Tunable thresholds
+  const LOW_LLIN_PER_1000 = 500; // <500 per 1000 population = gap signal
   const VERY_LOW_LLIN_PER_1000 = 350;
   const HIGH_API = 10;
 
   const year = filters.year;
 
   const items = useMemo<LLINGapItem[]>(() => {
-    if (!filteredVillages.length) return [];
+    if (!filteredVillages?.length) return [];
 
-    // Compute API across the filtered set (we also want per-village approximations)
-    // If you already have api_2026/api_2025/api_2024 on each village, use that instead.
-    // Here we approximate per-village API using the same aggregate computation helper,
-    // by running it per row via a single-item list.
     const out: LLINGapItem[] = [];
 
     for (const v of filteredVillages as any[]) {
-      const pop = Number(v.population ?? 0);
+      const pop = toNum(v.population, 0);
       const llin = getActiveLLIN(v, year);
 
       const popMissing = !pop || pop <= 0;
       const llinMissing = v[`active_llin_${year}`] == null;
 
-      const api = popMissing
-        ? 0
-        : computeAggregateAPI([v], year, filters.monthStart, filters.monthEnd);
-
+      const yearTotalCases = popMissing ? 0 : getYearTotalCases(v, year);
+      const api = popMissing ? 0 : (yearTotalCases / pop) * 1000;
       const llinPer1000 = popMissing ? 0 : (llin / pop) * 1000;
 
       // Missing essentials
@@ -79,7 +99,7 @@ export function LLINGapPanel() {
         continue;
       }
 
-      // High API + Low LLIN (priority)
+      // Priority: High API + Low LLIN
       if (api >= HIGH_API && llinPer1000 < LOW_LLIN_PER_1000) {
         out.push({
           village_code: String(v.village_code ?? "UNKNOWN"),
@@ -92,14 +112,12 @@ export function LLINGapPanel() {
           api,
           type: "High API + Low LLIN",
           severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "medium",
-          message: `API ${api.toFixed(1)} with low LLIN coverage (${llinPer1000.toFixed(
-            0
-          )}/1000).`,
+          message: `High API (${api.toFixed(1)}) with low LLIN coverage (${llinPer1000.toFixed(0)}/1000).`,
         });
         continue;
       }
 
-      // Low LLIN coverage (general gap)
+      // General: Low LLIN coverage
       if (llinPer1000 < LOW_LLIN_PER_1000) {
         out.push({
           village_code: String(v.village_code ?? "UNKNOWN"),
@@ -117,12 +135,7 @@ export function LLINGapPanel() {
       }
     }
 
-    // Sort: highest severity first, then High API + Low LLIN first, then lowest LLIN per 1000
-    const sevRank: Record<LLINGapItem["severity"], number> = {
-      high: 3,
-      medium: 2,
-      low: 1,
-    };
+    const sevRank: Record<LLINGapItem["severity"], number> = { high: 3, medium: 2, low: 1 };
     const typeRank: Record<LLINGapItem["type"], number> = {
       "High API + Low LLIN": 3,
       "Low LLIN coverage": 2,
@@ -136,7 +149,7 @@ export function LLINGapPanel() {
       if (t !== 0) return t;
       return a.llin_per_1000 - b.llin_per_1000;
     });
-  }, [filteredVillages, filters.monthStart, filters.monthEnd, year]);
+  }, [filteredVillages, year]);
 
   if (items.length === 0) return null;
 
@@ -187,7 +200,7 @@ export function LLINGapPanel() {
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   {it.type === "High API + Low LLIN" ? (
-                    <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
                   ) : (
                     <ArrowDownRight className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
@@ -202,15 +215,11 @@ export function LLINGapPanel() {
                   {it.union ? `, ${it.union}` : ""}
                 </div>
 
-                <div className="text-muted-foreground text-[10px] mt-1">
-                  {it.message}
-                </div>
+                <div className="text-muted-foreground text-[10px] mt-1">{it.message}</div>
 
                 <div className="text-[10px] mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
                   <span>LLIN: {it.active_llin.toLocaleString()}</span>
-                  <span>
-                    LLIN/1000: {Number.isFinite(it.llin_per_1000) ? it.llin_per_1000.toFixed(0) : "—"}
-                  </span>
+                  <span>LLIN/1000: {it.llin_per_1000.toFixed(0)}</span>
                   <span>API: {it.api.toFixed(1)}</span>
                 </div>
               </div>
@@ -225,7 +234,7 @@ export function LLINGapPanel() {
         )}
 
         <div className="mt-3 text-[10px] text-muted-foreground">
-          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}. (Adjust later if needed.)
+          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}.
         </div>
       </div>
     </div>
