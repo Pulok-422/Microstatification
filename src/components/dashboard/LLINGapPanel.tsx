@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useFilters } from "@/hooks/useFilters";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Package, ArrowDownRight, AlertTriangle } from "lucide-react";
 
 type LLINGapType = "Low LLIN coverage" | "High API + Low LLIN" | "Missing LLIN/Pop";
@@ -20,7 +21,6 @@ type LLINGapItem = {
 
   type: LLINGapType;
   severity: LLINGapSeverity;
-  message: string;
 };
 
 const MONTH_KEYS_2026 = [
@@ -43,6 +43,10 @@ const LOW_LLIN_PER_1000 = 500; // gap signal
 const VERY_LOW_LLIN_PER_1000 = 350;
 const HIGH_API = 10;
 
+// Progress bar scaling caps (so bars look consistent)
+const LLIN_PROGRESS_MAX_PER_1000 = 800; // 800/1000 will show ~100%
+const API_PROGRESS_MAX = 20; // API 20 will show ~100%
+
 function toNum(x: any, fallback = 0) {
   if (x === null || x === undefined || x === "") return fallback;
   const n = Number(x);
@@ -58,7 +62,7 @@ function getActiveLLIN(v: any, year: number) {
 
 function getYearTotalCases(v: any, year: number) {
   if (year === 2026) {
-    return MONTH_KEYS_2026.reduce((s, k) => s + toNum(v[k]), 0);
+    return MONTH_KEYS_2026.reduce((s, k) => s + toNum((v as any)[k]), 0);
   }
   if (year === 2025) return toNum(v.cases_2025_total);
   if (year === 2024) return toNum(v.cases_2024_total);
@@ -68,6 +72,13 @@ function getYearTotalCases(v: any, year: number) {
 function safeRatePer1000(numerator: number, denominator: number) {
   if (!denominator || denominator <= 0) return 0;
   return (numerator / denominator) * 1000;
+}
+
+function clampPct(x: number) {
+  if (!Number.isFinite(x)) return 0;
+  if (x < 0) return 0;
+  if (x > 100) return 100;
+  return x;
 }
 
 export function LLINGapPanel() {
@@ -85,7 +96,6 @@ export function LLINGapPanel() {
 
       const popMissing = !pop || pop <= 0;
 
-      // LLIN missing means field is absent or empty (not just 0)
       const rawLLIN = (v as any)[`active_llin_${year}`];
       const llinMissing = rawLLIN === null || rawLLIN === undefined || rawLLIN === "";
 
@@ -111,9 +121,6 @@ export function LLINGapPanel() {
 
           type: "Missing LLIN/Pop",
           severity: "medium",
-          message: popMissing
-            ? "Population missing or invalid (cannot assess LLIN coverage)."
-            : `Active LLINs (${year}) missing.`,
         });
         continue;
       }
@@ -134,7 +141,6 @@ export function LLINGapPanel() {
 
           type: "High API + Low LLIN",
           severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "medium",
-          message: `High API (${api.toFixed(1)}) with low LLIN coverage (${llinPer1000.toFixed(0)}/1000).`,
         });
         continue;
       }
@@ -155,7 +161,6 @@ export function LLINGapPanel() {
 
           type: "Low LLIN coverage",
           severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "low",
-          message: `LLIN coverage is low (${llinPer1000.toFixed(0)}/1000).`,
         });
       }
     }
@@ -213,6 +218,18 @@ export function LLINGapPanel() {
             const isPriority = it.type === "High API + Low LLIN";
             const isBorder = it.border_country && it.border_country !== "None";
 
+            // Progress %
+            const llinPct = clampPct((it.llin_per_1000 / LLIN_PROGRESS_MAX_PER_1000) * 100);
+            const apiPct = clampPct((it.api / API_PROGRESS_MAX) * 100);
+
+            // Labels kept minimal (no long sentences)
+            const subtitle =
+              it.type === "Missing LLIN/Pop"
+                ? "Missing essentials"
+                : it.type === "High API + Low LLIN"
+                ? "Priority gap"
+                : "Coverage gap";
+
             return (
               <div
                 key={`${it.village_code}-${i}`}
@@ -231,7 +248,7 @@ export function LLINGapPanel() {
                   {it.severity}
                 </Badge>
 
-                <div className="min-w-0">
+                <div className="min-w-0 w-full">
                   <div className="flex items-center gap-1">
                     {isPriority ? (
                       <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
@@ -246,17 +263,31 @@ export function LLINGapPanel() {
                   </div>
 
                   <div className="text-muted-foreground text-[10px] mt-0.5">
-                    {it.upazila ? `${it.upazila}` : ""}
+                    {subtitle}
+                    {it.upazila ? ` • ${it.upazila}` : ""}
                     {it.union ? `, ${it.union}` : ""}
                     {isBorder ? ` • Border: ${it.border_country}` : ""}
                   </div>
 
-                  <div className="text-muted-foreground text-[10px] mt-1">{it.message}</div>
+                  {/* Progress bars */}
+                  <div className="mt-2 space-y-2">
+                    {/* LLIN */}
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>LLIN / 1000</span>
+                        <span>{it.llin_per_1000.toFixed(0)}</span>
+                      </div>
+                      <Progress value={llinPct} />
+                    </div>
 
-                  <div className="text-[10px] mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
-                    <span>LLIN: {it.active_llin.toLocaleString()}</span>
-                    <span>LLIN/1000: {it.llin_per_1000.toFixed(0)}</span>
-                    <span>API: {it.api.toFixed(1)}</span>
+                    {/* API */}
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>API</span>
+                        <span>{it.api.toFixed(1)}</span>
+                      </div>
+                      <Progress value={apiPct} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -271,7 +302,7 @@ export function LLINGapPanel() {
         )}
 
         <div className="mt-3 text-[10px] text-muted-foreground">
-          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}.
+          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}. Progress scale caps: LLIN {LLIN_PROGRESS_MAX_PER_1000}/1000, API {API_PROGRESS_MAX}.
         </div>
       </div>
     </div>
