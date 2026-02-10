@@ -38,14 +38,13 @@ const MONTH_KEYS_2026 = [
   "cases_2026_dec",
 ] as const;
 
-// Tunable thresholds
-const LOW_LLIN_PER_1000 = 500; // gap signal
+// Thresholds
+const LOW_LLIN_PER_1000 = 500;
 const VERY_LOW_LLIN_PER_1000 = 350;
 const HIGH_API = 10;
 
-// Progress bar scaling caps (so bars look consistent)
-const LLIN_PROGRESS_MAX_PER_1000 = 800; // 800/1000 will show ~100%
-const API_PROGRESS_MAX = 20; // API 20 will show ~100%
+// Progress scale cap
+const LLIN_PROGRESS_MAX_PER_1000 = 800;
 
 function toNum(x: any, fallback = 0) {
   if (x === null || x === undefined || x === "") return fallback;
@@ -95,7 +94,6 @@ export function LLINGapPanel() {
       const llin = getActiveLLIN(v, year);
 
       const popMissing = !pop || pop <= 0;
-
       const rawLLIN = (v as any)[`active_llin_${year}`];
       const llinMissing = rawLLIN === null || rawLLIN === undefined || rawLLIN === "";
 
@@ -105,7 +103,6 @@ export function LLINGapPanel() {
 
       const villageCode = String(v.village_code ?? "UNKNOWN");
 
-      // Missing essentials
       if (popMissing || llinMissing) {
         out.push({
           village_code: villageCode,
@@ -113,19 +110,16 @@ export function LLINGapPanel() {
           union: v.union,
           upazila: v.upazila,
           border_country: v.border_country,
-
           population: pop,
           active_llin: llin,
           llin_per_1000: llinPer1000,
           api,
-
           type: "Missing LLIN/Pop",
           severity: "medium",
         });
         continue;
       }
 
-      // Priority: High API + Low LLIN
       if (api >= HIGH_API && llinPer1000 < LOW_LLIN_PER_1000) {
         out.push({
           village_code: villageCode,
@@ -133,19 +127,16 @@ export function LLINGapPanel() {
           union: v.union,
           upazila: v.upazila,
           border_country: v.border_country,
-
           population: pop,
           active_llin: llin,
           llin_per_1000: llinPer1000,
           api,
-
           type: "High API + Low LLIN",
           severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "medium",
         });
         continue;
       }
 
-      // General: Low LLIN coverage
       if (llinPer1000 < LOW_LLIN_PER_1000) {
         out.push({
           village_code: villageCode,
@@ -153,12 +144,10 @@ export function LLINGapPanel() {
           union: v.union,
           upazila: v.upazila,
           border_country: v.border_country,
-
           population: pop,
           active_llin: llin,
           llin_per_1000: llinPer1000,
           api,
-
           type: "Low LLIN coverage",
           severity: llinPer1000 < VERY_LOW_LLIN_PER_1000 ? "high" : "low",
         });
@@ -175,21 +164,20 @@ export function LLINGapPanel() {
     return out.sort((a, b) => {
       const s = sevRank[b.severity] - sevRank[a.severity];
       if (s !== 0) return s;
-
       const t = typeRank[b.type] - typeRank[a.type];
       if (t !== 0) return t;
-
-      // Lower LLIN/1000 first (bigger gap)
       return a.llin_per_1000 - b.llin_per_1000;
     });
   }, [filteredVillages, year]);
 
-  const grouped = useMemo(() => {
-    return items.reduce((acc, it) => {
-      acc[it.type] = (acc[it.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-  }, [items]);
+  const grouped = useMemo(
+    () =>
+      items.reduce((acc, it) => {
+        acc[it.type] = (acc[it.type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+    [items]
+  );
 
   const top10 = useMemo(() => items.slice(0, 10), [items]);
 
@@ -217,18 +205,7 @@ export function LLINGapPanel() {
           {top10.map((it, i) => {
             const isPriority = it.type === "High API + Low LLIN";
             const isBorder = it.border_country && it.border_country !== "None";
-
-            // Progress %
             const llinPct = clampPct((it.llin_per_1000 / LLIN_PROGRESS_MAX_PER_1000) * 100);
-            const apiPct = clampPct((it.api / API_PROGRESS_MAX) * 100);
-
-            // Labels kept minimal (no long sentences)
-            const subtitle =
-              it.type === "Missing LLIN/Pop"
-                ? "Missing essentials"
-                : it.type === "High API + Low LLIN"
-                ? "Priority gap"
-                : "Coverage gap";
 
             return (
               <div
@@ -255,7 +232,6 @@ export function LLINGapPanel() {
                     ) : (
                       <ArrowDownRight className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
-
                     <div className="font-medium text-[11px] truncate">
                       {it.village_code}
                       {it.village_name_en ? ` • ${it.village_name_en}` : ""}
@@ -263,31 +239,18 @@ export function LLINGapPanel() {
                   </div>
 
                   <div className="text-muted-foreground text-[10px] mt-0.5">
-                    {subtitle}
-                    {it.upazila ? ` • ${it.upazila}` : ""}
+                    {it.upazila ? `${it.upazila}` : ""}
                     {it.union ? `, ${it.union}` : ""}
                     {isBorder ? ` • Border: ${it.border_country}` : ""}
+                    {isPriority ? ` • API ${it.api.toFixed(1)}` : ""}
                   </div>
 
-                  {/* Progress bars */}
-                  <div className="mt-2 space-y-2">
-                    {/* LLIN */}
-                    <div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                        <span>LLIN / 1000</span>
-                        <span>{it.llin_per_1000.toFixed(0)}</span>
-                      </div>
-                      <Progress value={llinPct} />
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                      <span>LLIN / 1000</span>
+                      <span>{it.llin_per_1000.toFixed(0)}</span>
                     </div>
-
-                    {/* API */}
-                    <div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                        <span>API</span>
-                        <span>{it.api.toFixed(1)}</span>
-                      </div>
-                      <Progress value={apiPct} />
-                    </div>
+                    <Progress value={llinPct} />
                   </div>
                 </div>
               </div>
@@ -302,7 +265,7 @@ export function LLINGapPanel() {
         )}
 
         <div className="mt-3 text-[10px] text-muted-foreground">
-          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}. Progress scale caps: LLIN {LLIN_PROGRESS_MAX_PER_1000}/1000, API {API_PROGRESS_MAX}.
+          Thresholds: Low LLIN &lt; {LOW_LLIN_PER_1000}/1000, High API ≥ {HIGH_API}.
         </div>
       </div>
     </div>
