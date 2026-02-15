@@ -5,9 +5,10 @@ import { TrendChart } from "./TrendChart";
 import { HotspotChart } from "./HotspotChart";
 import { CompletenessHeatmap } from "./CompletenessHeatmap";
 import { DataQuality } from "./DataQuality";
+import { VillageMapPanel } from "./VillageMapPanel";
+import { LLINGapPanel } from "./LLINGapPanel";
 import { DetailTable } from "./DetailTable";
 import { VillageDrawer } from "./VillageDrawer";
-import { LLINGapPanel } from "./LLINGapPanel";
 
 export function MonitoringTab() {
   const [selectedVillage, setSelectedVillage] = useState<ComputedVillage | null>(null);
@@ -21,6 +22,7 @@ export function MonitoringTab() {
         <HotspotChart />
       </div>
 
+      {/* Completeness + Missing Entry Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <CompletenessHeatmap onSelectVillage={setSelectedVillage} />
@@ -28,6 +30,10 @@ export function MonitoringTab() {
         <DataQuality />
       </div>
 
+      {/* Map below Data Quality section */}
+      <VillageMapPanel />
+
+      {/* LLIN gaps */}
       <LLINGapPanel />
 
       <DetailTable onViewVillage={setSelectedVillage} />
