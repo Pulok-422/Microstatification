@@ -1,57 +1,127 @@
+import { useMemo } from "react";
 import { useFilters } from "@/hooks/useFilters";
-import { MONTHS } from "@/types/dashboard";
-import { AlertTriangle, FileWarning, Copy, TrendingUp } from "lucide-react";
+import { MONTHS, CHART_COLORS } from "@/types/dashboard";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+
+function pct(part: number, total: number) {
+  if (!total || total <= 0) return 0;
+  return (part / total) * 100;
+}
 
 export function DataQuality() {
   const { filteredVillages, filters } = useFilters();
 
-  const missingPop = filteredVillages.filter((v) => !v.population).length;
-  const missingCode = filteredVillages.filter((v) => !v.village_code).length;
-  const missingUnion = filteredVillages.filter((v) => !v.union).length;
+  const { missingCells, totalCells, missingVillages } = useMemo(() => {
+    let missingCells = 0;
+    let totalCells = 0;
+    let missingVillages = 0;
 
-  let missingMonthly = 0;
-  if (filters.year === 2026) {
-    for (const v of filteredVillages) {
+    if (filters.year !== 2026) return { missingCells: 0, totalCells: 0, missingVillages: 0 };
+
+    for (const v of filteredVillages as any[]) {
+      let hasMissing = false;
+
       for (let m = filters.monthStart; m <= filters.monthEnd; m++) {
-        if (v.cases_monthly_2026[m] === null) missingMonthly++;
+        totalCells += 1;
+        const val = v.cases_monthly_2026?.[m];
+        if (val === null || val === undefined) {
+          missingCells += 1;
+          hasMissing = true;
+        }
       }
+
+      if (hasMissing) missingVillages += 1;
     }
+
+    return { missingCells, totalCells, missingVillages };
+  }, [filteredVillages, filters.year, filters.monthStart, filters.monthEnd]);
+
+  const data = useMemo(() => {
+    if (filters.year !== 2026) return [];
+    const present = Math.max(0, totalCells - missingCells);
+    return [
+      { name: "Present entries", value: present },
+      { name: "Missing entries", value: missingCells },
+    ];
+  }, [filters.year, totalCells, missingCells]);
+
+  if (filters.year !== 2026) {
+    return (
+      <div className="panel h-full">
+        <div className="panel-header">
+          <span className="panel-title">Missing Monthly Entries</span>
+        </div>
+        <div className="panel-body text-sm text-muted-foreground text-center py-8">
+          Monthly missing-entry chart is available for 2026 only
+        </div>
+      </div>
+    );
   }
-
-  const outliers = filteredVillages.filter((v) => {
-    if (filters.year === 2026) {
-      return v.cases_monthly_2026.some((c) => c !== null && c > 30) || v.api_2026 > 20;
-    }
-    return false;
-  });
-
-  const codes = filteredVillages.map((v) => v.village_code);
-  const dupes = codes.filter((c, i) => codes.indexOf(c) !== i).length;
-
-  const items = [
-    { icon: FileWarning, label: "Missing population", count: missingPop, severity: missingPop > 0 ? "warn" : "ok" },
-    { icon: FileWarning, label: "Missing village code", count: missingCode, severity: missingCode > 0 ? "warn" : "ok" },
-    { icon: FileWarning, label: "Missing union", count: missingUnion, severity: missingUnion > 0 ? "warn" : "ok" },
-    { icon: AlertTriangle, label: `Missing monthly entries (${MONTHS[filters.monthStart]}–${MONTHS[filters.monthEnd]})`, count: missingMonthly, severity: missingMonthly > 0 ? "warn" : "ok" },
-    { icon: TrendingUp, label: "Outlier villages (cases>30 or API>20)", count: outliers.length, severity: outliers.length > 0 ? "warn" : "ok" },
-    { icon: Copy, label: "Duplicate village codes", count: dupes, severity: dupes > 0 ? "error" : "ok" },
-  ];
 
   return (
     <div className="panel h-full">
-      <div className="panel-header"><span className="panel-title">Data Quality Checks</span></div>
-      <div className="panel-body space-y-2">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-            <div className="flex items-center gap-2 text-xs">
-              <item.icon className={`h-3.5 w-3.5 ${item.severity === "ok" ? "text-success" : item.severity === "warn" ? "text-warning" : "text-destructive"}`} />
-              <span>{item.label}</span>
-            </div>
-            <span className={`text-xs font-semibold tabular-nums ${item.severity === "ok" ? "text-success" : item.severity === "warn" ? "text-warning" : "text-destructive"}`}>
-              {item.count}
-            </span>
+      <div className="panel-header">
+        <span className="panel-title">Missing Monthly Entries</span>
+      </div>
+
+      <div className="panel-body">
+        {totalCells === 0 ? (
+          <div className="flex items-center justify-center h-[240px] text-sm text-muted-foreground">
+            No data
           </div>
-        ))}
+        ) : (
+          <div className="space-y-3">
+            <div className="text-[11px] text-muted-foreground">
+              Period: {MONTHS[filters.monthStart]}–{MONTHS[filters.monthEnd]} {filters.year} •
+              Villages affected: <span className="text-foreground font-medium">{missingVillages.toLocaleString()}</span> /{" "}
+              {filteredVillages.length.toLocaleString()} • Missing cells:{" "}
+              <span className="text-foreground font-medium">{missingCells.toLocaleString()}</span> /{" "}
+              {totalCells.toLocaleString()} ({pct(missingCells, totalCells).toFixed(1)}%)
+            </div>
+
+            <div className="h-[240px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={85}
+                    paddingAngle={2}
+                    stroke={CHART_COLORS.grid}
+                  >
+                    <Cell fill={CHART_COLORS.success} />
+                    <Cell fill={CHART_COLORS.destructive} />
+                  </Pie>
+
+                  <Tooltip
+                    contentStyle={{ fontSize: 11 }}
+                    formatter={(v: any, name: any) => {
+                      const val = Number(v) || 0;
+                      return [`${val.toLocaleString()} (${pct(val, totalCells).toFixed(1)}%)`, name];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="flex items-center justify-between rounded border border-border p-2">
+                <span className="text-muted-foreground">Present</span>
+                <span className="font-semibold tabular-nums">{(totalCells - missingCells).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between rounded border border-border p-2">
+                <span className="text-muted-foreground">Missing</span>
+                <span className="font-semibold tabular-nums text-destructive">{missingCells.toLocaleString()}</span>
+              </div>
+            </div>
+
+
+          </div>
+        )}
       </div>
     </div>
   );
