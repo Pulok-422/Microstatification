@@ -135,10 +135,7 @@ export function DataQuality() {
                   </div>
                 </div>
 
-                <div className="text-[10px] text-muted-foreground">
-                  The chart updates automatically based on selected filters (district,
-                  upazila, union, village, and month range).
-                </div>
+
               </div>
             </div>
           </div>
