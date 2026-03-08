@@ -83,12 +83,10 @@ function completenessColors(bucket: string) {
 export function VillageMapPanel() {
   const { filteredVillages, filters } = useFilters();
 
-  // SSR-safe (Vercel build) — only render after client mount
   const [isClient, setIsClient] = useState(false);
-  useEffect(() => setIsClient(true), []);
-  if (!isClient) return null;
-
   const [mode, setMode] = useState<MapMode>("distribution");
+
+  useEffect(() => setIsClient(true), []);
 
   // Default center (Bangladesh southeast-ish). FitBounds will override if points exist.
   const defaultCenter: [number, number] = [22.6, 92.2];
