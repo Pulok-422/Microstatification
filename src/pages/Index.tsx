@@ -26,7 +26,7 @@ const Index = () => {
               <SummaryTab />
             </TabsContent>
             <TabsContent value="map">
-              <VillageMapPanel />
+              <MapTab />
             </TabsContent>
           </Tabs>
         </main>
