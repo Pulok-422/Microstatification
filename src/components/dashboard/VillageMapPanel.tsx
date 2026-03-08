@@ -166,6 +166,8 @@ export function VillageMapPanel() {
     if (mode === "completeness" && !canShowCompleteness) setMode("distribution");
   }, [mode, canShowCompleteness]);
 
+  if (!isClient) return null;
+
   const headerRight = (
     <div className="flex items-center gap-2">
       <div className="hidden sm:block text-[10px] text-muted-foreground">
