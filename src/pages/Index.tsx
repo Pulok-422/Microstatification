@@ -3,6 +3,7 @@ import { Header } from "@/components/dashboard/Header";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { MonitoringTab } from "@/components/dashboard/MonitoringTab";
 import { SummaryTab } from "@/components/dashboard/SummaryTab";
+import { VillageMapPanel } from "@/components/dashboard/VillageMapPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
@@ -16,12 +17,16 @@ const Index = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="map">Map</TabsTrigger>
             </TabsList>
             <TabsContent value="monitoring">
               <MonitoringTab />
             </TabsContent>
             <TabsContent value="summary">
               <SummaryTab />
+            </TabsContent>
+            <TabsContent value="map">
+              <VillageMapPanel />
             </TabsContent>
           </Tabs>
         </main>
