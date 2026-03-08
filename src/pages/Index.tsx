@@ -3,7 +3,7 @@ import { Header } from "@/components/dashboard/Header";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { MonitoringTab } from "@/components/dashboard/MonitoringTab";
 import { SummaryTab } from "@/components/dashboard/SummaryTab";
-import { VillageMapPanel } from "@/components/dashboard/VillageMapPanel";
+import { MapTab } from "@/components/dashboard/MapTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
@@ -26,7 +26,7 @@ const Index = () => {
               <SummaryTab />
             </TabsContent>
             <TabsContent value="map">
-              <VillageMapPanel />
+              <MapTab />
             </TabsContent>
           </Tabs>
         </main>
