@@ -37,6 +37,12 @@ type VillageProps = {
 
 type PointFeature = Feature<Point, VillageProps>;
 
+type HistoryPoint = {
+  year: number;
+  case: number;
+  api: number;
+};
+
 type RankedVillage = {
   index: number;
   name: string;
@@ -45,6 +51,7 @@ type RankedVillage = {
   api: number;
   diff: number;
   feature: PointFeature;
+  history: HistoryPoint[];
 };
 
 function numberValue(value: unknown) {
@@ -106,6 +113,46 @@ function demoApi(props: VillageProps, index: number) {
   if (cases <= 5) return Number((0.8 + (index % 4) * 0.35).toFixed(2));
   if (cases <= 20) return Number((3 + (index % 5) * 0.9).toFixed(2));
   return Number((10 + (index % 6) * 1.4).toFixed(2));
+}
+
+function buildDemoHistory(case2023: number, case2024: number, api2024: number, index: number) {
+  const growth = case2024 - case2023;
+
+  const case2022 = Math.max(
+    0,
+    Math.round(case2023 - growth * 0.7 - ((index % 4) - 1))
+  );
+  const case2021 = Math.max(
+    0,
+    Math.round(case2022 - growth * 0.5 - ((index % 3) - 1))
+  );
+  const case2020 = Math.max(
+    0,
+    Math.round(case2021 - growth * 0.35 - ((index % 5) - 2))
+  );
+
+  const safeCase = (v: number) => Math.max(0, v);
+
+  const api2023 = Number(
+    Math.max(0.05, api2024 * (case2023 + 1) / (case2024 + 1) + ((index % 3) - 1) * 0.12).toFixed(2)
+  );
+  const api2022 = Number(
+    Math.max(0.05, api2023 * 0.9 + (safeCase(case2022) - safeCase(case2023)) * 0.05 + ((index % 4) - 1.5) * 0.08).toFixed(2)
+  );
+  const api2021 = Number(
+    Math.max(0.05, api2022 * 0.9 + (safeCase(case2021) - safeCase(case2022)) * 0.05 + ((index % 5) - 2) * 0.05).toFixed(2)
+  );
+  const api2020 = Number(
+    Math.max(0.05, api2021 * 0.92 + (safeCase(case2020) - safeCase(case2021)) * 0.05 + ((index % 2) - 0.5) * 0.04).toFixed(2)
+  );
+
+  return [
+    { year: 2020, case: safeCase(case2020), api: api2020 },
+    { year: 2021, case: safeCase(case2021), api: api2021 },
+    { year: 2022, case: safeCase(case2022), api: api2022 },
+    { year: 2023, case: safeCase(case2023), api: api2023 },
+    { year: 2024, case: safeCase(case2024), api: Number(api2024.toFixed(2)) },
+  ];
 }
 
 function caseStyle(value: number, highlight = false) {
@@ -385,6 +432,187 @@ function formatDiff(diff: number) {
   return `${diff}`;
 }
 
+function getLineColor(index: number) {
+  const palette = [
+    "#DC2626",
+    "#2563EB",
+    "#0F766E",
+    "#D97706",
+    "#7C3AED",
+    "#0891B2",
+    "#BE123C",
+    "#4F46E5",
+    "#65A30D",
+    "#EA580C",
+    "#1D4ED8",
+    "#0D9488",
+    "#9333EA",
+    "#CA8A04",
+    "#E11D48",
+    "#0369A1",
+    "#7C2D12",
+    "#334155",
+    "#16A34A",
+    "#A21CAF",
+    "#0284C7",
+    "#B45309",
+    "#1E40AF",
+    "#BE185D",
+    "#0F766E",
+    "#374151",
+    "#4D7C0F",
+    "#C2410C",
+    "#5B21B6",
+    "#047857",
+  ];
+  return palette[index % palette.length];
+}
+
+function MiniTrendChart({
+  title,
+  villages,
+  metric,
+  formatter,
+}: {
+  title: string;
+  villages: RankedVillage[];
+  metric: "case" | "api";
+  formatter?: (value: number) => string;
+}) {
+  const width = 300;
+  const height = 180;
+  const padding = { top: 18, right: 16, bottom: 28, left: 36 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const years = [2020, 2021, 2022, 2023, 2024];
+
+  const allValues = villages.flatMap((v) => v.history.map((d) => d[metric]));
+  const maxValue = Math.max(...allValues, 1);
+  const minValue = Math.min(...allValues, 0);
+  const range = maxValue - minValue || 1;
+
+  const yTicks = 4;
+
+  const x = (year: number) =>
+    padding.left + ((year - years[0]) / (years[years.length - 1] - years[0])) * chartWidth;
+
+  const y = (value: number) =>
+    padding.top + ((maxValue - value) / range) * chartHeight;
+
+  const makePath = (series: HistoryPoint[]) =>
+    series
+      .map((point, i) => `${i === 0 ? "M" : "L"} ${x(point.year)} ${y(point[metric])}`)
+      .join(" ");
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-1 text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mb-3 text-xs leading-5 text-slate-500">
+        Individual village trends for the currently filtered set ({villages.length} villages).
+      </div>
+
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="h-[190px] min-w-[300px] w-full"
+          role="img"
+          aria-label={title}
+        >
+          <rect x="0" y="0" width={width} height={height} fill="white" rx="16" />
+
+          {Array.from({ length: yTicks + 1 }).map((_, i) => {
+            const value = minValue + ((yTicks - i) / yTicks) * range;
+            const yPos = padding.top + (i / yTicks) * chartHeight;
+            return (
+              <g key={i}>
+                <line
+                  x1={padding.left}
+                  y1={yPos}
+                  x2={width - padding.right}
+                  y2={yPos}
+                  stroke="#E2E8F0"
+                  strokeWidth="1"
+                />
+                <text
+                  x={padding.left - 8}
+                  y={yPos + 4}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="#64748B"
+                >
+                  {formatter ? formatter(Number(value.toFixed(metric === "api" ? 1 : 0))) : value}
+                </text>
+              </g>
+            );
+          })}
+
+          {years.map((year) => (
+            <g key={year}>
+              <line
+                x1={x(year)}
+                y1={padding.top}
+                x2={x(year)}
+                y2={height - padding.bottom}
+                stroke="#F1F5F9"
+                strokeWidth="1"
+              />
+              <text
+                x={x(year)}
+                y={height - 10}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#64748B"
+              >
+                {year}
+              </text>
+            </g>
+          ))}
+
+          {villages.map((village, idx) => {
+            const color = getLineColor(idx);
+            return (
+              <g key={`${village.name}-${metric}`}>
+                <path
+                  d={makePath(village.history)}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {village.history.map((point) => (
+                  <circle
+                    key={`${village.name}-${point.year}-${metric}`}
+                    cx={x(point.year)}
+                    cy={y(point[metric])}
+                    r="2.6"
+                    fill={color}
+                  />
+                ))}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {villages.map((village, idx) => (
+          <span
+            key={`${village.name}-legend-${metric}`}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700"
+          >
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: getLineColor(idx) }}
+            />
+            <span className="max-w-[160px] truncate">{village.name}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MapTab() {
   const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
   const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
@@ -430,6 +658,7 @@ export function MapTab() {
         const api = demoApi(props, index);
         const diff = case2024 - case2023;
         const name = String(getVillageName(props));
+        const history = buildDemoHistory(case2023, case2024, api, index);
 
         return {
           index,
@@ -439,6 +668,7 @@ export function MapTab() {
           api,
           diff,
           feature,
+          history,
         };
       })
       .sort((a, b) => {
@@ -521,6 +751,8 @@ export function MapTab() {
       : mode === "API"
       ? "Village API summary"
       : "Village change summary";
+
+  const showTrendCharts = topCount !== 999999 && visibleVillages.length > 0;
 
   return (
     <div className="panel overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/70 shadow-sm">
@@ -932,6 +1164,23 @@ export function MapTab() {
                         </div>
                       </div>
                     ) : null}
+                  </>
+                )}
+
+                {showTrendCharts && (
+                  <>
+                    <MiniTrendChart
+                      title="Historical Case Trend"
+                      villages={visibleVillages}
+                      metric="case"
+                      formatter={(value) => `${Math.round(value)}`}
+                    />
+                    <MiniTrendChart
+                      title="Historical API Trend"
+                      villages={visibleVillages}
+                      metric="api"
+                      formatter={(value) => Number(value).toFixed(1)}
+                    />
                   </>
                 )}
 
