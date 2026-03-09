@@ -385,34 +385,6 @@ function formatDiff(diff: number) {
   return `${diff}`;
 }
 
-function summarySentence(
-  mode: ClassifyMode,
-  visibleVillages: RankedVillage[],
-  totalVillages: number,
-  totalCase2024: number,
-  avgApi: number
-) {
-  if (!visibleVillages.length) return "No village records are currently available on the map.";
-
-  const top = visibleVillages[0];
-
-  if (mode === "Case") {
-    return `${top.name} currently has the highest reported 2024 case count among the displayed villages. ${visibleVillages.length} of ${totalVillages} villages are visible, representing ${totalCase2024} total reported cases across the full dataset.`;
-  }
-
-  if (mode === "API") {
-    return `${top.name} currently has the highest API among the displayed villages. The overall average API across the dataset is ${avgApi.toFixed(
-      2
-    )}.`;
-  }
-
-  const increases = visibleVillages.filter((item) => item.diff > 0).length;
-  const decreases = visibleVillages.filter((item) => item.diff < 0).length;
-  const same = visibleVillages.filter((item) => item.diff === 0).length;
-
-  return `Year-on-year change is mixed across the displayed villages: ${increases} increased, ${decreases} decreased, and ${same} remained unchanged. The largest absolute change is currently observed in ${top.name}.`;
-}
-
 export function MapTab() {
   const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
   const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
@@ -491,10 +463,6 @@ export function MapTab() {
       (sum, feature) => sum + numberValue(feature.properties?.Case2024),
       0
     );
-    const totalCase2023 = pointFeatures.reduce(
-      (sum, feature, index) => sum + demoCase2023(feature.properties || {}, index),
-      0
-    );
     const avgApi =
       pointFeatures.length > 0
         ? pointFeatures.reduce(
@@ -522,7 +490,6 @@ export function MapTab() {
     return {
       totalVillages,
       totalCase2024,
-      totalCase2023,
       avgApi,
       visibleTotalCases,
       visibleAvgApi,
@@ -830,24 +797,6 @@ export function MapTab() {
               </MapContainer>
 
               <MapLegend mode={mode} />
-
-              <div className="pointer-events-none absolute left-4 top-4 z-[1000] max-w-sm rounded-2xl border border-slate-200/90 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Current view
-                </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
-                  {mode === "Case"
-                    ? "Village distribution by case burden"
-                    : mode === "API"
-                    ? "Village distribution by API"
-                    : "Village distribution by annual change"}
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-600">
-                  {topCount === 999999
-                    ? "All villages are visible on the map."
-                    : `${visibleVillages.length} villages are currently displayed based on the selected ranking.`}
-                </div>
-              </div>
             </div>
 
             <div className="flex h-[780px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -857,21 +806,6 @@ export function MapTab() {
               </div>
 
               <div className="space-y-4 overflow-y-auto p-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Overview
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-700">
-                    {summarySentence(
-                      mode,
-                      visibleVillages,
-                      summary.totalVillages,
-                      summary.totalCase2024,
-                      summary.avgApi
-                    )}
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <MetricCard
                     title="Villages in dataset"
@@ -989,7 +923,11 @@ export function MapTab() {
                           {summary.maxDiffVillage.name}
                         </div>
                         <div className="mt-1 text-sm text-slate-600">
-                          {summary.maxDiffVillage.diff > 0 ? "Increase" : summary.maxDiffVillage.diff < 0 ? "Decrease" : "No change"}{" "}
+                          {summary.maxDiffVillage.diff > 0
+                            ? "Increase"
+                            : summary.maxDiffVillage.diff < 0
+                            ? "Decrease"
+                            : "No change"}{" "}
                           ({formatDiff(summary.maxDiffVillage.diff)})
                         </div>
                       </div>
@@ -1057,24 +995,6 @@ export function MapTab() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-2 text-sm font-semibold text-slate-900">Map notes</div>
-                  <div className="space-y-2 text-xs leading-5 text-slate-600">
-                    <div>
-                      Village labels are sourced primarily from the{" "}
-                      <span className="font-medium text-slate-900">VIL_N_E</span> field.
-                    </div>
-                    <div>
-                      Union boundaries are intentionally hollow so village points remain visually
-                      clear.
-                    </div>
-                    <div>
-                      When all villages are visible, the ranked list on the right is limited to the
-                      top 20 for readability.
-                    </div>
                   </div>
                 </div>
               </div>
