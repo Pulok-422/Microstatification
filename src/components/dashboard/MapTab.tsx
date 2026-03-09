@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
+  GeoJSON,
   LayersControl,
   MapContainer,
   Popup,
@@ -9,7 +10,13 @@ import {
   ZoomControl,
   useMap,
 } from "react-leaflet";
-import type { GeoJSON as GeoJSONType, FeatureCollection, Point } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  GeoJSON as GeoJSONType,
+  Geometry,
+  Point,
+} from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -24,36 +31,37 @@ type GeoJsonProperties = {
   PARA?: string;
 };
 
-type PointFeature = {
-  type: "Feature";
-  geometry: Point;
-  properties?: GeoJsonProperties;
-};
+type PointFeature = Feature<Point, GeoJsonProperties>;
 
-function FitToData({ data }: { data: FeatureCollection | null }) {
+function FitToData({
+  pointData,
+  boundaryData,
+}: {
+  pointData: FeatureCollection | null;
+  boundaryData: FeatureCollection | null;
+}) {
   const map = useMap();
 
   useEffect(() => {
-    if (!data || !data.features?.length) return;
+    const layers: L.Layer[] = [];
 
-    const bounds = L.latLngBounds(
-      data.features
-        .filter(
-          (f: any) =>
-            f?.geometry?.type === "Point" &&
-            Array.isArray(f?.geometry?.coordinates) &&
-            f.geometry.coordinates.length >= 2
-        )
-        .map((f: any) => [
-          f.geometry.coordinates[1],
-          f.geometry.coordinates[0],
-        ] as [number, number])
-    );
+    if (boundaryData?.features?.length) {
+      layers.push(L.geoJSON(boundaryData as any));
+    }
+
+    if (pointData?.features?.length) {
+      layers.push(L.geoJSON(pointData as any));
+    }
+
+    if (!layers.length) return;
+
+    const group = L.featureGroup(layers);
+    const bounds = group.getBounds();
 
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [30, 30] });
     }
-  }, [data, map]);
+  }, [pointData, boundaryData, map]);
 
   return null;
 }
@@ -150,20 +158,39 @@ function getFeatureName(props?: GeoJsonProperties) {
   );
 }
 
+function getBoundaryName(properties?: Record<string, any>) {
+  if (!properties) return "Union boundary";
+  return (
+    properties.name ||
+    properties.NAME ||
+    properties.union ||
+    properties.UNION ||
+    properties.un_name ||
+    properties.ward ||
+    properties.id ||
+    "Union boundary"
+  );
+}
+
 export function MapTab() {
-  const [geojsonData, setGeojsonData] = useState<FeatureCollection | null>(null);
+  const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
+  const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}Lama.geojson`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to load GeoJSON: ${res.status}`);
-        }
+    Promise.all([
+      fetch(`${import.meta.env.BASE_URL}Lama.geojson`).then((res) => {
+        if (!res.ok) throw new Error(`Failed to load village GeoJSON: ${res.status}`);
         return res.json();
-      })
-      .then((data: GeoJSONType) => {
-        setGeojsonData(data as FeatureCollection);
+      }),
+      fetch(`${import.meta.env.BASE_URL}lama_unions.geojson`).then((res) => {
+        if (!res.ok) throw new Error(`Failed to load union boundary GeoJSON: ${res.status}`);
+        return res.json();
+      }),
+    ])
+      .then(([villageJson, boundaryJson]: [GeoJSONType, GeoJSONType]) => {
+        setVillageData(villageJson as FeatureCollection);
+        setBoundaryData(boundaryJson as FeatureCollection);
       })
       .catch((err) => {
         console.error(err);
@@ -172,15 +199,55 @@ export function MapTab() {
   }, []);
 
   const pointFeatures = useMemo(() => {
-    if (!geojsonData?.features) return [];
+    if (!villageData?.features) return [];
 
-    return geojsonData.features.filter(
+    return villageData.features.filter(
       (feature): feature is PointFeature =>
         feature?.type === "Feature" &&
         feature?.geometry?.type === "Point" &&
         Array.isArray(feature.geometry.coordinates)
     );
-  }, [geojsonData]);
+  }, [villageData]);
+
+  const boundaryStyle = () => ({
+    color: "#334155",
+    weight: 1.8,
+    fillOpacity: 0,
+    opacity: 0.95,
+  });
+
+  const onEachBoundaryFeature = (
+    feature: Feature<Geometry, Record<string, any>>,
+    layer: L.Layer
+  ) => {
+    const props = feature?.properties || {};
+    const name = getBoundaryName(props);
+
+    if (layer instanceof L.Path) {
+      layer.on({
+        mouseover: (e: any) => {
+          e.target.setStyle({
+            weight: 3,
+            color: "#0f172a",
+          });
+        },
+        mouseout: (e: any) => {
+          e.target.setStyle({
+            weight: 1.8,
+            color: "#334155",
+          });
+        },
+      });
+    }
+
+    layer.bindTooltip(String(name), { sticky: true });
+
+    layer.bindPopup(`
+      <div style="min-width:160px">
+        <div style="font-weight:600;">${String(name)}</div>
+      </div>
+    `);
+  };
 
   return (
     <div className="panel">
@@ -214,14 +281,14 @@ export function MapTab() {
 
                 <LayersControl.BaseLayer name="CartoDB Light">
                   <TileLayer
-                    attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+                    attribution="&copy; OpenStreetMap contributors &copy; CARTO"
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   />
                 </LayersControl.BaseLayer>
 
                 <LayersControl.BaseLayer name="CartoDB Dark">
                   <TileLayer
-                    attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+                    attribution="&copy; OpenStreetMap contributors &copy; CARTO"
                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   />
                 </LayersControl.BaseLayer>
@@ -234,7 +301,17 @@ export function MapTab() {
                 </LayersControl.BaseLayer>
               </LayersControl>
 
-              {geojsonData && <FitToData data={geojsonData} />}
+              {(villageData || boundaryData) && (
+                <FitToData pointData={villageData} boundaryData={boundaryData} />
+              )}
+
+              {boundaryData && (
+                <GeoJSON
+                  data={boundaryData as any}
+                  style={boundaryStyle}
+                  onEachFeature={onEachBoundaryFeature}
+                />
+              )}
 
               {pointFeatures.map((feature, index) => {
                 const [lng, lat] = feature.geometry.coordinates;
