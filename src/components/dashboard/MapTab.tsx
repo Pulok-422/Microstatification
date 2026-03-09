@@ -10,457 +10,277 @@ import {
   ZoomControl,
   useMap,
 } from "react-leaflet";
-import type {
-  Feature,
-  FeatureCollection,
-  GeoJSON as GeoJSONType,
-  Geometry,
-  Point,
-} from "geojson";
+import type { Feature, FeatureCollection, Point } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-type ClassifyField = "Case" | "API";
+type ClassifyMode = "Case" | "API" | "Diff";
 
-type GeoJsonProperties = {
+type Props = {
+  Case2024?: number;
+  Case2023?: number;
+  API?: number;
   [key: string]: any;
-  Case2024?: number | string;
-  API?: number | string;
-  name?: string;
-  NAME?: string;
-  village?: string;
-  VILLAGE?: string;
-  para?: string;
-  PARA?: string;
 };
 
-type PointFeature = Feature<Point, GeoJsonProperties>;
+type PointFeature = Feature<Point, Props>;
 
-function FitToData({
-  pointData,
-  boundaryData,
+function FitBounds({
+  village,
+  boundary,
 }: {
-  pointData: FeatureCollection | null;
-  boundaryData: FeatureCollection | null;
+  village: FeatureCollection | null;
+  boundary: FeatureCollection | null;
 }) {
   const map = useMap();
 
   useEffect(() => {
     const layers: L.Layer[] = [];
 
-    if (boundaryData?.features?.length) {
-      layers.push(L.geoJSON(boundaryData as any));
-    }
-
-    if (pointData?.features?.length) {
-      layers.push(L.geoJSON(pointData as any));
-    }
+    if (boundary) layers.push(L.geoJSON(boundary as any));
+    if (village) layers.push(L.geoJSON(village as any));
 
     if (!layers.length) return;
 
     const group = L.featureGroup(layers);
     const bounds = group.getBounds();
 
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [30, 30] });
-    }
-  }, [pointData, boundaryData, map]);
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
+  }, [village, boundary, map]);
 
   return null;
 }
 
-function getNumber(value: unknown): number {
-  if (value === null || value === undefined || value === "") return 0;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : 0;
+function getNumber(v: any) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function getFeatureName(props?: GeoJsonProperties) {
-  if (!props) return "Unnamed location";
-  return (
-    props.name ||
-    props.NAME ||
-    props.village ||
-    props.VILLAGE ||
-    props.para ||
-    props.PARA ||
-    props.SiteName ||
-    props.site_name ||
-    props.id ||
-    "Unnamed location"
-  );
+/* -------- DEMO DATA GENERATION -------- */
+
+function demoCase2023(props: Props, index: number) {
+  if (props.Case2023 !== undefined) return getNumber(props.Case2023);
+
+  const case2024 = getNumber(props.Case2024);
+
+  const variation = (index % 5) - 2; // -2 to +2
+  return Math.max(0, case2024 - variation);
 }
 
-function getBoundaryName(properties?: Record<string, any>) {
-  if (!properties) return "Union boundary";
-  return (
-    properties.name ||
-    properties.NAME ||
-    properties.union ||
-    properties.UNION ||
-    properties.un_name ||
-    properties.ward ||
-    properties.id ||
-    "Union boundary"
-  );
+function demoAPI(props: Props, index: number) {
+  if (props.API !== undefined) return getNumber(props.API);
+
+  const c = getNumber(props.Case2024);
+
+  if (c === 0) return 0.1 + (index % 3) * 0.1;
+  if (c <= 5) return 0.8 + (index % 4) * 0.3;
+  if (c <= 20) return 3 + (index % 5);
+  return 10 + (index % 5) * 1.5;
 }
 
-function getDemoApiValue(props?: GeoJsonProperties, index = 0): number {
-  const realApi = getNumber(props?.API);
-  if (realApi > 0) return realApi;
+/* -------- CLASSIFICATION -------- */
 
-  const caseValue = getNumber(props?.Case2024);
-
-  if (caseValue === 0) return Number((0.1 + (index % 3) * 0.1).toFixed(1));
-  if (caseValue <= 5) return Number((0.5 + (index % 5) * 0.3).toFixed(1));
-  if (caseValue <= 20) return Number((2 + (index % 6) * 0.8).toFixed(1));
-  return Number((7 + (index % 8) * 1.5).toFixed(1));
+function caseStyle(v: number) {
+  if (v >= 21) return { r: 15, c: "#dc2626", s: "#7f1d1d" };
+  if (v >= 6) return { r: 12, c: "#ea580c", s: "#9a3412" };
+  if (v >= 1) return { r: 9, c: "#f59e0b", s: "#b45309" };
+  return { r: 6, c: "#fde047", s: "#a16207" };
 }
 
-function getMetricValue(
-  classifyBy: ClassifyField,
-  props?: GeoJsonProperties,
-  index = 0
-): number {
-  if (classifyBy === "API") {
-    return getDemoApiValue(props, index);
-  }
-  return getNumber(props?.Case2024);
+function apiStyle(v: number) {
+  if (v >= 10) return { r: 15, c: "#dc2626", s: "#7f1d1d" };
+  if (v >= 5) return { r: 12, c: "#ea580c", s: "#9a3412" };
+  if (v >= 1) return { r: 9, c: "#f59e0b", s: "#b45309" };
+  return { r: 6, c: "#fde047", s: "#a16207" };
 }
 
-function getMarkerStyle(classifyBy: ClassifyField, value: number) {
-  if (classifyBy === "Case") {
-    if (value >= 21) {
-      return {
-        radius: 15,
-        fillColor: "#dc2626",
-        color: "#991b1b",
-        weight: 1,
-        fillOpacity: 0.85,
-      };
-    }
-    if (value >= 6) {
-      return {
-        radius: 12,
-        fillColor: "#ea580c",
-        color: "#9a3412",
-        weight: 1,
-        fillOpacity: 0.82,
-      };
-    }
-    if (value >= 1) {
-      return {
-        radius: 9,
-        fillColor: "#f59e0b",
-        color: "#b45309",
-        weight: 1,
-        fillOpacity: 0.8,
-      };
-    }
-    return {
-      radius: 6,
-      fillColor: "#facc15",
-      color: "#ca8a04",
-      weight: 1,
-      fillOpacity: 0.78,
-    };
+function diffStyle(diff: number) {
+  if (diff > 0)
+    return { r: 12, c: "#ef4444", s: "#7f1d1d", label: "Increase" };
+
+  if (diff < 0)
+    return { r: 12, c: "#3b82f6", s: "#1e3a8a", label: "Decrease" };
+
+  return { r: 10, c: "#9ca3af", s: "#374151", label: "Same" };
+}
+
+/* -------- LEGEND -------- */
+
+function Legend({ mode }: { mode: ClassifyMode }) {
+  let items: any[] = [];
+
+  if (mode === "Case") {
+    items = [
+      ["0", "#fde047"],
+      ["1-5", "#f59e0b"],
+      ["6-20", "#ea580c"],
+      ["21+", "#dc2626"],
+    ];
   }
 
-  if (value >= 10) {
-    return {
-      radius: 15,
-      fillColor: "#dc2626",
-      color: "#991b1b",
-      weight: 1,
-      fillOpacity: 0.85,
-    };
+  if (mode === "API") {
+    items = [
+      ["<1", "#fde047"],
+      ["1-4.9", "#f59e0b"],
+      ["5-9.9", "#ea580c"],
+      ["10+", "#dc2626"],
+    ];
   }
-  if (value >= 5) {
-    return {
-      radius: 12,
-      fillColor: "#ea580c",
-      color: "#9a3412",
-      weight: 1,
-      fillOpacity: 0.82,
-    };
-  }
-  if (value >= 1) {
-    return {
-      radius: 9,
-      fillColor: "#f59e0b",
-      color: "#b45309",
-      weight: 1,
-      fillOpacity: 0.8,
-    };
-  }
-  return {
-    radius: 6,
-    fillColor: "#facc15",
-    color: "#ca8a04",
-    weight: 1,
-    fillOpacity: 0.78,
-  };
-}
 
-function Legend({ classifyBy }: { classifyBy: ClassifyField }) {
-  const items =
-    classifyBy === "Case"
-      ? [
-          { label: "0", color: "#facc15", size: 6 },
-          { label: "1-5", color: "#f59e0b", size: 9 },
-          { label: "6-20", color: "#ea580c", size: 12 },
-          { label: "21+", color: "#dc2626", size: 15 },
-        ]
-      : [
-          { label: "< 1", color: "#facc15", size: 6 },
-          { label: "1-4.9", color: "#f59e0b", size: 9 },
-          { label: "5-9.9", color: "#ea580c", size: 12 },
-          { label: "10+", color: "#dc2626", size: 15 },
-        ];
+  if (mode === "Diff") {
+    items = [
+      ["Increase", "#ef4444"],
+      ["Decrease", "#3b82f6"],
+      ["Same", "#9ca3af"],
+    ];
+  }
 
   return (
-    <div className="absolute bottom-4 right-4 z-[1000] rounded-lg border border-border bg-background/95 p-3 shadow-md">
-      <div className="mb-2 text-sm font-semibold">
-        {classifyBy === "Case" ? "Case2024" : "API"}
-      </div>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <span
-              className="inline-block rounded-full border border-white/50"
-              style={{
-                width: item.size * 2,
-                height: item.size * 2,
-                backgroundColor: item.color,
-              }}
-            />
-            <span className="text-xs text-foreground">{item.label}</span>
-          </div>
-        ))}
-      </div>
+    <div className="absolute bottom-4 right-4 z-[1000] rounded bg-white p-3 shadow">
+      <div className="text-sm font-semibold mb-2">{mode}</div>
+      {items.map(([l, c]) => (
+        <div key={l} className="flex items-center gap-2 text-xs mb-1">
+          <span
+            style={{ background: c }}
+            className="w-4 h-4 rounded-full inline-block"
+          />
+          {l}
+        </div>
+      ))}
     </div>
   );
 }
 
 export function MapTab() {
-  const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
-  const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
-  const [error, setError] = useState("");
-  const [classifyBy, setClassifyBy] = useState<ClassifyField>("Case");
+  const [village, setVillage] = useState<FeatureCollection | null>(null);
+  const [boundary, setBoundary] = useState<FeatureCollection | null>(null);
+  const [mode, setMode] = useState<ClassifyMode>("Case");
 
   useEffect(() => {
     Promise.all([
-      fetch(`${import.meta.env.BASE_URL}Lama.geojson`).then((res) => {
-        if (!res.ok) throw new Error(`Failed to load village GeoJSON: ${res.status}`);
-        return res.json();
-      }),
-      fetch(`${import.meta.env.BASE_URL}lama_unions.geojson`).then((res) => {
-        if (!res.ok) throw new Error(`Failed to load union boundary GeoJSON: ${res.status}`);
-        return res.json();
-      }),
-    ])
-      .then(([villageJson, boundaryJson]: [GeoJSONType, GeoJSONType]) => {
-        setVillageData(villageJson as FeatureCollection);
-        setBoundaryData(boundaryJson as FeatureCollection);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(String(err));
-      });
+      fetch(`${import.meta.env.BASE_URL}Lama.geojson`).then((r) => r.json()),
+      fetch(`${import.meta.env.BASE_URL}lama_unions.geojson`).then((r) =>
+        r.json()
+      ),
+    ]).then(([v, b]) => {
+      setVillage(v);
+      setBoundary(b);
+    });
   }, []);
 
-  const pointFeatures = useMemo(() => {
-    if (!villageData?.features) return [];
-
-    return villageData.features.filter(
-      (feature): feature is PointFeature =>
-        feature?.type === "Feature" &&
-        feature?.geometry?.type === "Point" &&
-        Array.isArray(feature.geometry.coordinates)
+  const features = useMemo(() => {
+    if (!village) return [];
+    return village.features.filter(
+      (f): f is PointFeature => f.geometry?.type === "Point"
     );
-  }, [villageData]);
-
-  const boundaryStyle = () => ({
-    color: "#334155",
-    weight: 1.8,
-    fillOpacity: 0,
-    opacity: 0.95,
-  });
-
-  const onEachBoundaryFeature = (
-    feature: Feature<Geometry, Record<string, any>>,
-    layer: L.Layer
-  ) => {
-    const props = feature?.properties || {};
-    const name = getBoundaryName(props);
-
-    if (layer instanceof L.Path) {
-      layer.on({
-        mouseover: (e: any) => {
-          e.target.setStyle({
-            weight: 3,
-            color: "#0f172a",
-          });
-        },
-        mouseout: (e: any) => {
-          e.target.setStyle({
-            weight: 1.8,
-            color: "#334155",
-          });
-        },
-      });
-    }
-
-    layer.bindTooltip(String(name), { sticky: true });
-
-    layer.bindPopup(`
-      <div style="min-width:160px">
-        <div style="font-weight:600;">${String(name)}</div>
-      </div>
-    `);
-  };
+  }, [village]);
 
   return (
     <div className="panel">
-      <div className="panel-header flex items-center justify-between gap-3">
+      <div className="panel-header flex justify-between">
         <span className="panel-title">Village Map</span>
 
-        <div className="flex items-center gap-2">
-          <label htmlFor="classifyBy" className="text-sm font-medium">
-            Classify by
-          </label>
-          <select
-            id="classifyBy"
-            value={classifyBy}
-            onChange={(e) => setClassifyBy(e.target.value as ClassifyField)}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-          >
-            <option value="Case">Case</option>
-            <option value="API">API</option>
-          </select>
-        </div>
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as ClassifyMode)}
+          className="border px-2 py-1 rounded text-sm"
+        >
+          <option value="Case">Case</option>
+          <option value="API">API</option>
+          <option value="Diff">Diff from previous year</option>
+        </select>
       </div>
 
       <div className="panel-body">
-        {error ? (
-          <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        ) : (
-          <div className="relative h-[700px] w-full overflow-hidden rounded border border-border">
-            <MapContainer
-              center={[22.1, 92.1]}
-              zoom={10}
-              zoomControl={false}
-              scrollWheelZoom={true}
-              className="h-full w-full"
-            >
-              <ZoomControl position="topleft" />
+        <div className="relative h-[700px] w-full rounded border">
+          <MapContainer
+            center={[22.1, 92.1]}
+            zoom={10}
+            zoomControl={false}
+            className="h-full w-full"
+          >
+            <ZoomControl position="topleft" />
 
-              <LayersControl position="topright">
-                <LayersControl.BaseLayer checked name="OpenStreetMap">
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                </LayersControl.BaseLayer>
+            <LayersControl position="topright">
+              <LayersControl.BaseLayer checked name="OpenStreetMap">
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              </LayersControl.BaseLayer>
 
-                <LayersControl.BaseLayer name="CartoDB Light">
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                  />
-                </LayersControl.BaseLayer>
+              <LayersControl.BaseLayer name="Carto Light">
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+              </LayersControl.BaseLayer>
 
-                <LayersControl.BaseLayer name="CartoDB Dark">
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  />
-                </LayersControl.BaseLayer>
+              <LayersControl.BaseLayer name="Carto Dark">
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+              </LayersControl.BaseLayer>
 
-                <LayersControl.BaseLayer name="Satellite">
-                  <TileLayer
-                    attribution="Tiles &copy; Esri"
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  />
-                </LayersControl.BaseLayer>
-              </LayersControl>
+              <LayersControl.BaseLayer name="Satellite">
+                <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+              </LayersControl.BaseLayer>
+            </LayersControl>
 
-              {(villageData || boundaryData) && (
-                <FitToData pointData={villageData} boundaryData={boundaryData} />
-              )}
+            <FitBounds village={village} boundary={boundary} />
 
-              {boundaryData && (
-                <GeoJSON
-                  data={boundaryData as any}
-                  style={boundaryStyle}
-                  onEachFeature={onEachBoundaryFeature}
-                />
-              )}
+            {/* UNION BOUNDARY */}
+            {boundary && (
+              <GeoJSON
+                data={boundary as any}
+                style={{ color: "#374151", weight: 2, fillOpacity: 0 }}
+              />
+            )}
 
-              {pointFeatures.map((feature, index) => {
-                const [lng, lat] = feature.geometry.coordinates;
-                const props = feature.properties || {};
-                const name = getFeatureName(props);
+            {/* POINTS */}
+            {features.map((f, i) => {
+              const [lng, lat] = f.geometry.coordinates;
 
-                const metricValue = getMetricValue(classifyBy, props, index);
-                const markerStyle = getMarkerStyle(classifyBy, metricValue);
+              const p = f.properties || {};
 
-                const caseValue = getNumber(props.Case2024);
-                const apiValue = getDemoApiValue(props, index);
+              const c24 = getNumber(p.Case2024);
+              const c23 = demoCase2023(p, i);
+              const api = demoAPI(p, i);
 
-                return (
-                  <CircleMarker
-                    key={`${name}-${index}`}
-                    center={[lat, lng]}
-                    radius={markerStyle.radius}
-                    pathOptions={{
-                      color: markerStyle.color,
-                      weight: markerStyle.weight,
-                      fillColor: markerStyle.fillColor,
-                      fillOpacity: markerStyle.fillOpacity,
-                    }}
-                  >
-                    <Tooltip direction="top" offset={[0, -4]} opacity={1}>
-                      <div className="text-xs">
-                        <div className="font-semibold">{String(name)}</div>
-                        <div>Case2024: {caseValue}</div>
-                        <div>API: {apiValue}</div>
-                      </div>
-                    </Tooltip>
+              let style;
 
-                    <Popup>
-                      <div className="min-w-[190px] text-sm">
-                        <div className="mb-2 font-semibold">{String(name)}</div>
-                        <div className="mb-1">
-                          <span className="font-medium">Case2024:</span> {caseValue}
-                        </div>
-                        <div className="mb-1">
-                          <span className="font-medium">API:</span> {apiValue}
-                        </div>
-                        <div className="mb-2">
-                          <span className="font-medium">Classified by:</span> {classifyBy}
-                        </div>
+              if (mode === "Case") style = caseStyle(c24);
+              else if (mode === "API") style = apiStyle(api);
+              else style = diffStyle(c24 - c23);
 
-                        {Object.entries(props).map(([key, value]) => (
-                          <div key={key} className="mb-1 break-words">
-                            <span className="font-medium">{key}:</span>{" "}
-                            {value === null || value === undefined || value === ""
-                              ? "-"
-                              : String(value)}
-                          </div>
-                        ))}
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                );
-              })}
-            </MapContainer>
+              return (
+                <CircleMarker
+                  key={i}
+                  center={[lat, lng]}
+                  radius={style.r}
+                  pathOptions={{
+                    fillColor: style.c,
+                    color: style.s,
+                    fillOpacity: 0.85,
+                    weight: 1,
+                  }}
+                >
+                  <Tooltip>
+                    <div className="text-xs">
+                      Case2024: {c24}
+                      <br />
+                      Case2023: {c23}
+                      <br />
+                      API: {api.toFixed(2)}
+                    </div>
+                  </Tooltip>
 
-            <Legend classifyBy={classifyBy} />
-          </div>
-        )}
+                  <Popup>
+                    <b>Case2024:</b> {c24}
+                    <br />
+                    <b>Case2023:</b> {c23}
+                    <br />
+                    <b>API:</b> {api.toFixed(2)}
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
+          </MapContainer>
+
+          <Legend mode={mode} />
+        </div>
       </div>
     </div>
   );
