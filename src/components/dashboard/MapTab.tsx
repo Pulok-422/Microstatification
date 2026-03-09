@@ -20,9 +20,12 @@ import type {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+type ClassifyField = "Case" | "API";
+
 type GeoJsonProperties = {
   [key: string]: any;
   Case2024?: number | string;
+  API?: number | string;
   name?: string;
   NAME?: string;
   village?: string;
@@ -66,80 +69,10 @@ function FitToData({
   return null;
 }
 
-function Legend() {
-  const items = [
-    { label: "0", color: "#facc15", size: 6 },
-    { label: "1-5", color: "#f59e0b", size: 9 },
-    { label: "6-20", color: "#ea580c", size: 12 },
-    { label: "21+", color: "#dc2626", size: 15 },
-  ];
-
-  return (
-    <div className="absolute bottom-4 right-4 z-[1000] rounded-lg border border-border bg-background/95 p-3 shadow-md">
-      <div className="mb-2 text-sm font-semibold">Case2024</div>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <span
-              className="inline-block rounded-full border border-white/50"
-              style={{
-                width: item.size * 2,
-                height: item.size * 2,
-                backgroundColor: item.color,
-              }}
-            />
-            <span className="text-xs text-foreground">{item.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function getCaseValue(value: unknown): number {
+function getNumber(value: unknown): number {
   if (value === null || value === undefined || value === "") return 0;
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
-}
-
-function getMarkerStyle(caseValue: number) {
-  if (caseValue >= 21) {
-    return {
-      radius: 15,
-      fillColor: "#dc2626",
-      color: "#991b1b",
-      weight: 1,
-      fillOpacity: 0.85,
-    };
-  }
-
-  if (caseValue >= 6) {
-    return {
-      radius: 12,
-      fillColor: "#ea580c",
-      color: "#9a3412",
-      weight: 1,
-      fillOpacity: 0.82,
-    };
-  }
-
-  if (caseValue >= 1) {
-    return {
-      radius: 9,
-      fillColor: "#f59e0b",
-      color: "#b45309",
-      weight: 1,
-      fillOpacity: 0.8,
-    };
-  }
-
-  return {
-    radius: 6,
-    fillColor: "#facc15",
-    color: "#ca8a04",
-    weight: 1,
-    fillOpacity: 0.78,
-  };
 }
 
 function getFeatureName(props?: GeoJsonProperties) {
@@ -172,10 +105,148 @@ function getBoundaryName(properties?: Record<string, any>) {
   );
 }
 
+function getDemoApiValue(props?: GeoJsonProperties, index = 0): number {
+  const realApi = getNumber(props?.API);
+  if (realApi > 0) return realApi;
+
+  const caseValue = getNumber(props?.Case2024);
+
+  if (caseValue === 0) return Number((0.1 + (index % 3) * 0.1).toFixed(1));
+  if (caseValue <= 5) return Number((0.5 + (index % 5) * 0.3).toFixed(1));
+  if (caseValue <= 20) return Number((2 + (index % 6) * 0.8).toFixed(1));
+  return Number((7 + (index % 8) * 1.5).toFixed(1));
+}
+
+function getMetricValue(
+  classifyBy: ClassifyField,
+  props?: GeoJsonProperties,
+  index = 0
+): number {
+  if (classifyBy === "API") {
+    return getDemoApiValue(props, index);
+  }
+  return getNumber(props?.Case2024);
+}
+
+function getMarkerStyle(classifyBy: ClassifyField, value: number) {
+  if (classifyBy === "Case") {
+    if (value >= 21) {
+      return {
+        radius: 15,
+        fillColor: "#dc2626",
+        color: "#991b1b",
+        weight: 1,
+        fillOpacity: 0.85,
+      };
+    }
+    if (value >= 6) {
+      return {
+        radius: 12,
+        fillColor: "#ea580c",
+        color: "#9a3412",
+        weight: 1,
+        fillOpacity: 0.82,
+      };
+    }
+    if (value >= 1) {
+      return {
+        radius: 9,
+        fillColor: "#f59e0b",
+        color: "#b45309",
+        weight: 1,
+        fillOpacity: 0.8,
+      };
+    }
+    return {
+      radius: 6,
+      fillColor: "#facc15",
+      color: "#ca8a04",
+      weight: 1,
+      fillOpacity: 0.78,
+    };
+  }
+
+  if (value >= 10) {
+    return {
+      radius: 15,
+      fillColor: "#dc2626",
+      color: "#991b1b",
+      weight: 1,
+      fillOpacity: 0.85,
+    };
+  }
+  if (value >= 5) {
+    return {
+      radius: 12,
+      fillColor: "#ea580c",
+      color: "#9a3412",
+      weight: 1,
+      fillOpacity: 0.82,
+    };
+  }
+  if (value >= 1) {
+    return {
+      radius: 9,
+      fillColor: "#f59e0b",
+      color: "#b45309",
+      weight: 1,
+      fillOpacity: 0.8,
+    };
+  }
+  return {
+    radius: 6,
+    fillColor: "#facc15",
+    color: "#ca8a04",
+    weight: 1,
+    fillOpacity: 0.78,
+  };
+}
+
+function Legend({ classifyBy }: { classifyBy: ClassifyField }) {
+  const items =
+    classifyBy === "Case"
+      ? [
+          { label: "0", color: "#facc15", size: 6 },
+          { label: "1-5", color: "#f59e0b", size: 9 },
+          { label: "6-20", color: "#ea580c", size: 12 },
+          { label: "21+", color: "#dc2626", size: 15 },
+        ]
+      : [
+          { label: "< 1", color: "#facc15", size: 6 },
+          { label: "1-4.9", color: "#f59e0b", size: 9 },
+          { label: "5-9.9", color: "#ea580c", size: 12 },
+          { label: "10+", color: "#dc2626", size: 15 },
+        ];
+
+  return (
+    <div className="absolute bottom-4 right-4 z-[1000] rounded-lg border border-border bg-background/95 p-3 shadow-md">
+      <div className="mb-2 text-sm font-semibold">
+        {classifyBy === "Case" ? "Case2024" : "API"}
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-2">
+            <span
+              className="inline-block rounded-full border border-white/50"
+              style={{
+                width: item.size * 2,
+                height: item.size * 2,
+                backgroundColor: item.color,
+              }}
+            />
+            <span className="text-xs text-foreground">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function MapTab() {
   const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
   const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
   const [error, setError] = useState("");
+  const [classifyBy, setClassifyBy] = useState<ClassifyField>("Case");
 
   useEffect(() => {
     Promise.all([
@@ -251,8 +322,23 @@ export function MapTab() {
 
   return (
     <div className="panel">
-      <div className="panel-header">
+      <div className="panel-header flex items-center justify-between gap-3">
         <span className="panel-title">Village Map</span>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="classifyBy" className="text-sm font-medium">
+            Classify by
+          </label>
+          <select
+            id="classifyBy"
+            value={classifyBy}
+            onChange={(e) => setClassifyBy(e.target.value as ClassifyField)}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          >
+            <option value="Case">Case</option>
+            <option value="API">API</option>
+          </select>
+        </div>
       </div>
 
       <div className="panel-body">
@@ -316,9 +402,13 @@ export function MapTab() {
               {pointFeatures.map((feature, index) => {
                 const [lng, lat] = feature.geometry.coordinates;
                 const props = feature.properties || {};
-                const caseValue = getCaseValue(props.Case2024);
-                const markerStyle = getMarkerStyle(caseValue);
                 const name = getFeatureName(props);
+
+                const metricValue = getMetricValue(classifyBy, props, index);
+                const markerStyle = getMarkerStyle(classifyBy, metricValue);
+
+                const caseValue = getNumber(props.Case2024);
+                const apiValue = getDemoApiValue(props, index);
 
                 return (
                   <CircleMarker
@@ -336,14 +426,21 @@ export function MapTab() {
                       <div className="text-xs">
                         <div className="font-semibold">{String(name)}</div>
                         <div>Case2024: {caseValue}</div>
+                        <div>API: {apiValue}</div>
                       </div>
                     </Tooltip>
 
                     <Popup>
-                      <div className="min-w-[180px] text-sm">
+                      <div className="min-w-[190px] text-sm">
                         <div className="mb-2 font-semibold">{String(name)}</div>
                         <div className="mb-1">
                           <span className="font-medium">Case2024:</span> {caseValue}
+                        </div>
+                        <div className="mb-1">
+                          <span className="font-medium">API:</span> {apiValue}
+                        </div>
+                        <div className="mb-2">
+                          <span className="font-medium">Classified by:</span> {classifyBy}
                         </div>
 
                         {Object.entries(props).map(([key, value]) => (
@@ -361,7 +458,7 @@ export function MapTab() {
               })}
             </MapContainer>
 
-            <Legend />
+            <Legend classifyBy={classifyBy} />
           </div>
         )}
       </div>
