@@ -18,7 +18,8 @@ import "leaflet/dist/leaflet.css";
 type ClassifyMode = "Case" | "API" | "Diff";
 type TopFilter = 10 | 20 | 30 | 999999;
 
-type Props = {
+type VillageProps = {
+  VIL_N_E?: string;
   Case2024?: number | string;
   Case2023?: number | string;
   API?: number | string;
@@ -34,40 +35,26 @@ type Props = {
   [key: string]: any;
 };
 
-type PointFeature = Feature<Point, Props>;
+type PointFeature = Feature<Point, VillageProps>;
 
-function FitBounds({
-  village,
-  boundary,
-}: {
-  village: FeatureCollection | null;
-  boundary: FeatureCollection | null;
-}) {
-  const map = useMap();
+type RankedVillage = {
+  index: number;
+  name: string;
+  case2024: number;
+  case2023: number;
+  api: number;
+  diff: number;
+  feature: PointFeature;
+};
 
-  useEffect(() => {
-    const layers: L.Layer[] = [];
-    if (boundary) layers.push(L.geoJSON(boundary as any));
-    if (village) layers.push(L.geoJSON(village as any));
-    if (!layers.length) return;
-
-    const group = L.featureGroup(layers);
-    const bounds = group.getBounds();
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [25, 25] });
-    }
-  }, [village, boundary, map]);
-
-  return null;
-}
-
-function getNumber(v: unknown) {
-  const n = Number(v);
+function numberValue(value: unknown) {
+  const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function getVillageName(props: Props) {
+function getVillageName(props: VillageProps) {
   return (
+    props.VIL_N_E ||
     props.name ||
     props.NAME ||
     props.village ||
@@ -83,10 +70,10 @@ function getVillageName(props: Props) {
 
 function getBoundaryName(props: Record<string, any>) {
   return (
+    props.UNION ||
+    props.union ||
     props.name ||
     props.NAME ||
-    props.union ||
-    props.UNION ||
     props.un_name ||
     props.ward ||
     props.id ||
@@ -94,53 +81,53 @@ function getBoundaryName(props: Record<string, any>) {
   );
 }
 
-function demoCase2023(props: Props, index: number) {
+function demoCase2023(props: VillageProps, index: number) {
   if (
     props.Case2023 !== undefined &&
     props.Case2023 !== null &&
     props.Case2023 !== ""
   ) {
-    return getNumber(props.Case2023);
+    return numberValue(props.Case2023);
   }
 
-  const c24 = getNumber(props.Case2024);
+  const current = numberValue(props.Case2024);
   const offset = (index % 5) - 2;
-  return Math.max(0, c24 - offset);
+  return Math.max(0, current - offset);
 }
 
-function demoAPI(props: Props, index: number) {
+function demoApi(props: VillageProps, index: number) {
   if (props.API !== undefined && props.API !== null && props.API !== "") {
-    return getNumber(props.API);
+    return numberValue(props.API);
   }
 
-  const c24 = getNumber(props.Case2024);
+  const cases = numberValue(props.Case2024);
 
-  if (c24 === 0) return Number((0.1 + (index % 3) * 0.1).toFixed(2));
-  if (c24 <= 5) return Number((0.8 + (index % 4) * 0.35).toFixed(2));
-  if (c24 <= 20) return Number((3 + (index % 5) * 0.9).toFixed(2));
+  if (cases === 0) return Number((0.1 + (index % 3) * 0.1).toFixed(2));
+  if (cases <= 5) return Number((0.8 + (index % 4) * 0.35).toFixed(2));
+  if (cases <= 20) return Number((3 + (index % 5) * 0.9).toFixed(2));
   return Number((10 + (index % 6) * 1.4).toFixed(2));
 }
 
-function caseStyle(v: number, isTopVillage: boolean) {
-  const boost = isTopVillage ? 2 : 0;
+function caseStyle(value: number, highlight = false) {
+  const extra = highlight ? 2 : 0;
 
-  if (v >= 21) return { r: 15 + boost, fill: "#dc2626", stroke: "#7f1d1d" };
-  if (v >= 6) return { r: 12 + boost, fill: "#ea580c", stroke: "#9a3412" };
-  if (v >= 1) return { r: 9 + boost, fill: "#f59e0b", stroke: "#b45309" };
-  return { r: 6 + boost, fill: "#fde047", stroke: "#a16207" };
+  if (value >= 21) return { radius: 15 + extra, fill: "#dc2626", stroke: "#7f1d1d" };
+  if (value >= 6) return { radius: 12 + extra, fill: "#ea580c", stroke: "#9a3412" };
+  if (value >= 1) return { radius: 9 + extra, fill: "#f59e0b", stroke: "#b45309" };
+  return { radius: 6 + extra, fill: "#fde047", stroke: "#a16207" };
 }
 
-function apiStyle(v: number, isTopVillage: boolean) {
-  const boost = isTopVillage ? 2 : 0;
+function apiStyle(value: number, highlight = false) {
+  const extra = highlight ? 2 : 0;
 
-  if (v >= 10) return { r: 15 + boost, fill: "#dc2626", stroke: "#7f1d1d" };
-  if (v >= 5) return { r: 12 + boost, fill: "#ea580c", stroke: "#9a3412" };
-  if (v >= 1) return { r: 9 + boost, fill: "#f59e0b", stroke: "#b45309" };
-  return { r: 6 + boost, fill: "#fde047", stroke: "#a16207" };
+  if (value >= 10) return { radius: 15 + extra, fill: "#dc2626", stroke: "#7f1d1d" };
+  if (value >= 5) return { radius: 12 + extra, fill: "#ea580c", stroke: "#9a3412" };
+  if (value >= 1) return { radius: 9 + extra, fill: "#f59e0b", stroke: "#b45309" };
+  return { radius: 6 + extra, fill: "#fde047", stroke: "#a16207" };
 }
 
-function diffMeta(diff: number, isTopVillage: boolean) {
-  const radius = isTopVillage ? 15 : 13;
+function diffStyle(diff: number, highlight = false) {
+  const radius = highlight ? 15 : 13;
 
   if (diff > 0) {
     return {
@@ -152,6 +139,7 @@ function diffMeta(diff: number, isTopVillage: boolean) {
       radius,
     };
   }
+
   if (diff < 0) {
     return {
       label: "Decrease",
@@ -162,17 +150,18 @@ function diffMeta(diff: number, isTopVillage: boolean) {
       radius,
     };
   }
+
   return {
     label: "Same",
     symbol: "–",
     fill: "#9ca3af",
     stroke: "#4b5563",
     text: "#ffffff",
-    radius: isTopVillage ? 14 : 12,
+    radius: highlight ? 14 : 12,
   };
 }
 
-function createDiffDivIcon(meta: ReturnType<typeof diffMeta>) {
+function createDiffIcon(meta: ReturnType<typeof diffStyle>) {
   return L.divIcon({
     className: "",
     html: `
@@ -189,7 +178,7 @@ function createDiffDivIcon(meta: ReturnType<typeof diffMeta>) {
         font-size:18px;
         font-weight:700;
         line-height:1;
-        box-shadow:0 2px 10px rgba(0,0,0,0.20);
+        box-shadow:0 3px 10px rgba(0,0,0,0.20);
       ">
         ${meta.symbol}
       </div>
@@ -201,21 +190,48 @@ function createDiffDivIcon(meta: ReturnType<typeof diffMeta>) {
   });
 }
 
-function Legend({ mode }: { mode: ClassifyMode }) {
-  const content =
+function FitBounds({
+  village,
+  boundary,
+}: {
+  village: FeatureCollection | null;
+  boundary: FeatureCollection | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const layers: L.Layer[] = [];
+    if (boundary) layers.push(L.geoJSON(boundary as any));
+    if (village) layers.push(L.geoJSON(village as any));
+
+    if (!layers.length) return;
+
+    const group = L.featureGroup(layers);
+    const bounds = group.getBounds();
+
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [24, 24] });
+    }
+  }, [village, boundary, map]);
+
+  return null;
+}
+
+function MapLegend({ mode }: { mode: ClassifyMode }) {
+  const items =
     mode === "Case"
       ? [
-          { label: "0", color: "#fde047", symbol: "" },
-          { label: "1-5", color: "#f59e0b", symbol: "" },
-          { label: "6-20", color: "#ea580c", symbol: "" },
-          { label: "21+", color: "#dc2626", symbol: "" },
+          { label: "0", color: "#fde047" },
+          { label: "1-5", color: "#f59e0b" },
+          { label: "6-20", color: "#ea580c" },
+          { label: "21+", color: "#dc2626" },
         ]
       : mode === "API"
       ? [
-          { label: "< 1", color: "#fde047", symbol: "" },
-          { label: "1-4.9", color: "#f59e0b", symbol: "" },
-          { label: "5-9.9", color: "#ea580c", symbol: "" },
-          { label: "10+", color: "#dc2626", symbol: "" },
+          { label: "< 1", color: "#fde047" },
+          { label: "1-4.9", color: "#f59e0b" },
+          { label: "5-9.9", color: "#ea580c" },
+          { label: "10+", color: "#dc2626" },
         ]
       : [
           { label: "Increase", color: "#ef4444", symbol: "↑" },
@@ -224,14 +240,14 @@ function Legend({ mode }: { mode: ClassifyMode }) {
         ];
 
   return (
-    <div className="absolute bottom-4 left-4 z-[1000] w-44 rounded-xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+    <div className="absolute bottom-4 left-4 z-[1000] w-44 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
       <div className="mb-2 text-sm font-semibold">
-        {mode === "Case" ? "Case2024" : mode === "API" ? "API" : "Difference"}
+        {mode === "Case" ? "Case 2024" : mode === "API" ? "API" : "Yearly Change"}
       </div>
       <div className="space-y-2">
-        {content.map((item) => (
+        {items.map((item) => (
           <div key={item.label} className="flex items-center gap-2 text-xs">
-            {mode === "Diff" ? (
+            {"symbol" in item ? (
               <span
                 className="flex h-6 w-6 items-center justify-center rounded-full border text-sm font-bold text-white"
                 style={{ backgroundColor: item.color }}
@@ -252,39 +268,58 @@ function Legend({ mode }: { mode: ClassifyMode }) {
   );
 }
 
-type RankedVillage = {
-  index: number;
-  name: string;
-  case2024: number;
-  case2023: number;
-  api: number;
-  diff: number;
-  feature: PointFeature;
-};
+function InsightCard({
+  title,
+  value,
+  subtitle,
+  tone = "default",
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  tone?: "default" | "red" | "blue" | "amber" | "slate";
+}) {
+  const toneClass =
+    tone === "red"
+      ? "bg-red-50"
+      : tone === "blue"
+      ? "bg-blue-50"
+      : tone === "amber"
+      ? "bg-amber-50"
+      : tone === "slate"
+      ? "bg-slate-100"
+      : "bg-card";
+
+  return (
+    <div className={`rounded-2xl border border-border p-4 shadow-sm ${toneClass}`}>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="mt-1 text-3xl font-semibold">{value}</div>
+      {subtitle ? <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div> : null}
+    </div>
+  );
+}
 
 export function MapTab() {
-  const [village, setVillage] = useState<FeatureCollection | null>(null);
-  const [boundary, setBoundary] = useState<FeatureCollection | null>(null);
+  const [villageData, setVillageData] = useState<FeatureCollection | null>(null);
+  const [boundaryData, setBoundaryData] = useState<FeatureCollection | null>(null);
   const [mode, setMode] = useState<ClassifyMode>("Case");
   const [topCount, setTopCount] = useState<TopFilter>(20);
   const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      fetch(`${import.meta.env.BASE_URL}Lama.geojson`).then((r) => {
-        if (!r.ok) throw new Error(`Failed to load Lama.geojson: ${r.status}`);
-        return r.json();
+      fetch(`${import.meta.env.BASE_URL}Lama.geojson`).then((res) => {
+        if (!res.ok) throw new Error(`Failed to load Lama.geojson: ${res.status}`);
+        return res.json();
       }),
-      fetch(`${import.meta.env.BASE_URL}lama_unions.geojson`).then((r) => {
-        if (!r.ok) {
-          throw new Error(`Failed to load lama_unions.geojson: ${r.status}`);
-        }
-        return r.json();
+      fetch(`${import.meta.env.BASE_URL}lama_unions.geojson`).then((res) => {
+        if (!res.ok) throw new Error(`Failed to load lama_unions.geojson: ${res.status}`);
+        return res.json();
       }),
     ])
-      .then(([v, b]) => {
-        setVillage(v);
-        setBoundary(b);
+      .then(([villages, boundaries]) => {
+        setVillageData(villages);
+        setBoundaryData(boundaries);
       })
       .catch((err) => {
         console.error(err);
@@ -292,32 +327,32 @@ export function MapTab() {
       });
   }, []);
 
-  const features = useMemo(() => {
-    if (!village) return [];
-    return village.features.filter(
-      (f): f is PointFeature =>
-        f.geometry?.type === "Point" && Array.isArray(f.geometry.coordinates)
+  const pointFeatures = useMemo(() => {
+    if (!villageData) return [];
+    return villageData.features.filter(
+      (feature): feature is PointFeature =>
+        feature.geometry?.type === "Point" && Array.isArray(feature.geometry.coordinates)
     );
-  }, [village]);
+  }, [villageData]);
 
   const rankedVillages = useMemo<RankedVillage[]>(() => {
-    return features
-      .map((f, i) => {
-        const props = f.properties || {};
-        const case2024 = getNumber(props.Case2024);
-        const case2023 = demoCase2023(props, i);
-        const api = demoAPI(props, i);
+    return pointFeatures
+      .map((feature, index) => {
+        const props = feature.properties || {};
+        const case2024 = numberValue(props.Case2024);
+        const case2023 = demoCase2023(props, index);
+        const api = demoApi(props, index);
         const diff = case2024 - case2023;
         const name = String(getVillageName(props));
 
         return {
-          index: i,
+          index,
           name,
           case2024,
           case2023,
           api,
           diff,
-          feature: f,
+          feature,
         };
       })
       .sort((a, b) => {
@@ -325,163 +360,121 @@ export function MapTab() {
         if (mode === "API") return b.api - a.api;
         return Math.abs(b.diff) - Math.abs(a.diff);
       });
-  }, [features, mode]);
+  }, [pointFeatures, mode]);
 
   const visibleVillages = useMemo(() => {
     if (topCount === 999999) return rankedVillages;
     return rankedVillages.slice(0, topCount);
   }, [rankedVillages, topCount]);
 
-  const visibleIndexSet = useMemo(() => {
-    return new Set(visibleVillages.map((v) => v.index));
+  const visibleSet = useMemo(() => {
+    return new Set(visibleVillages.map((item) => item.index));
   }, [visibleVillages]);
 
   const summary = useMemo(() => {
-    const totalVillages = features.length;
-    const totalCase2024 = features.reduce(
-      (sum, f) => sum + getNumber(f.properties?.Case2024),
+    const totalVillages = pointFeatures.length;
+    const totalCase2024 = pointFeatures.reduce(
+      (sum, feature) => sum + numberValue(feature.properties?.Case2024),
       0
     );
-    const totalCase2023 = features.reduce(
-      (sum, f, i) => sum + demoCase2023(f.properties || {}, i),
+    const totalCase2023 = pointFeatures.reduce(
+      (sum, feature, index) => sum + demoCase2023(feature.properties || {}, index),
       0
     );
-    const apiValues = features.map((f, i) => demoAPI(f.properties || {}, i));
-    const avgAPI = apiValues.length
-      ? apiValues.reduce((a, b) => a + b, 0) / apiValues.length
-      : 0;
+    const avgApi =
+      pointFeatures.length > 0
+        ? pointFeatures.reduce((sum, feature, index) => sum + demoApi(feature.properties || {}, index), 0) /
+          pointFeatures.length
+        : 0;
 
-    let increased = 0;
-    let decreased = 0;
-    let same = 0;
+    const visibleTotalCases = visibleVillages.reduce((sum, item) => sum + item.case2024, 0);
+    const visibleAvgApi =
+      visibleVillages.length > 0
+        ? visibleVillages.reduce((sum, item) => sum + item.api, 0) / visibleVillages.length
+        : 0;
 
-    features.forEach((f, i) => {
-      const c24 = getNumber(f.properties?.Case2024);
-      const c23 = demoCase2023(f.properties || {}, i);
-      const diff = c24 - c23;
-      if (diff > 0) increased += 1;
-      else if (diff < 0) decreased += 1;
-      else same += 1;
-    });
-
-    const topTotalCase = visibleVillages.reduce((sum, v) => sum + v.case2024, 0);
-    const topAvgAPI = visibleVillages.length
-      ? visibleVillages.reduce((sum, v) => sum + v.api, 0) / visibleVillages.length
-      : 0;
-    const topIncrease = visibleVillages.filter((v) => v.diff > 0).length;
-    const topDecrease = visibleVillages.filter((v) => v.diff < 0).length;
-    const topSame = visibleVillages.filter((v) => v.diff === 0).length;
+    const increaseCount = visibleVillages.filter((item) => item.diff > 0).length;
+    const decreaseCount = visibleVillages.filter((item) => item.diff < 0).length;
+    const sameCount = visibleVillages.filter((item) => item.diff === 0).length;
 
     return {
       totalVillages,
       totalCase2024,
       totalCase2023,
-      avgAPI,
-      increased,
-      decreased,
-      same,
-      topTotalCase,
-      topAvgAPI,
-      topIncrease,
-      topDecrease,
-      topSame,
+      avgApi,
+      visibleTotalCases,
+      visibleAvgApi,
+      increaseCount,
+      decreaseCount,
+      sameCount,
     };
-  }, [features, visibleVillages]);
+  }, [pointFeatures, visibleVillages]);
 
   const boundaryStyle = () => ({
     color: "#475569",
-    weight: 1.5,
+    weight: 1.4,
     fillOpacity: 0,
     opacity: 0.95,
     dashArray: "4 4",
   });
 
-  const onEachBoundaryFeature = (feature: any, layer: L.Layer) => {
-    const props = feature?.properties || {};
-    const name = getBoundaryName(props);
-
-    if (layer instanceof L.Path) {
-      layer.on({
-        mouseover: (e: any) => {
-          e.target.setStyle({
-            weight: 2.5,
-            color: "#0f172a",
-            dashArray: "",
-          });
-        },
-        mouseout: (e: any) => {
-          e.target.setStyle({
-            weight: 1.5,
-            color: "#475569",
-            dashArray: "4 4",
-          });
-        },
-      });
-    }
-
-    layer.bindTooltip(String(name), { sticky: true });
-    layer.bindPopup(`
-      <div style="min-width:160px">
-        <div style="font-weight:600;">${String(name)}</div>
-      </div>
-    `);
-  };
-
   const rightPanelTitle =
     mode === "Case"
-      ? `Top ${topCount === 999999 ? "All" : topCount} Villages by Case`
+      ? `Top ${topCount === 999999 ? "All" : topCount} villages by Case`
       : mode === "API"
-      ? `Top ${topCount === 999999 ? "All" : topCount} Villages by API`
-      : `Top ${topCount === 999999 ? "All" : topCount} Villages by Yearly Change`;
+      ? `Top ${topCount === 999999 ? "All" : topCount} villages by API`
+      : `Top ${topCount === 999999 ? "All" : topCount} villages by yearly change`;
 
   return (
     <div className="panel overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
-      <div className="panel-header flex flex-col gap-3 border-b border-border/70 bg-muted/30 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div className="text-lg font-semibold">Village Map</div>
-          <div className="text-sm text-muted-foreground">
-            Interactive village surveillance map with ranked insights
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Classify by</span>
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value as ClassifyMode)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none"
-            >
-              <option value="Case">Case</option>
-              <option value="API">API</option>
-              <option value="Diff">Difference from previous year</option>
-            </select>
+      <div className="border-b border-border/70 bg-muted/30 px-4 py-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="text-lg font-semibold">Village Map</div>
+            <div className="text-sm text-muted-foreground">
+              Explore Lama villages by case burden, API, and year-to-year change
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show</span>
-            <select
-              value={String(topCount)}
-              onChange={(e) => setTopCount(Number(e.target.value) as TopFilter)}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none"
-            >
-              <option value="10">Top 10</option>
-              <option value="20">Top 20</option>
-              <option value="30">Top 30</option>
-              <option value="999999">All</option>
-            </select>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Classify by</span>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as ClassifyMode)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none"
+              >
+                <option value="Case">Case</option>
+                <option value="API">API</option>
+                <option value="Diff">Difference from previous year</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Show</span>
+              <select
+                value={String(topCount)}
+                onChange={(e) => setTopCount(Number(e.target.value) as TopFilter)}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none"
+              >
+                <option value="10">Top 10</option>
+                <option value="20">Top 20</option>
+                <option value="30">Top 30</option>
+                <option value="999999">All villages</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="panel-body p-4">
+      <div className="p-4">
         {error ? (
           <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="relative h-[780px] w-full overflow-hidden rounded-2xl border border-border bg-background">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="relative h-[780px] overflow-hidden rounded-2xl border border-border bg-background">
               <MapContainer
                 center={[22.1, 92.1]}
                 zoom={10}
@@ -521,45 +514,64 @@ export function MapTab() {
                   </LayersControl.BaseLayer>
                 </LayersControl>
 
-                <FitBounds village={village} boundary={boundary} />
+                <FitBounds village={villageData} boundary={boundaryData} />
 
-                {boundary && (
+                {boundaryData && (
                   <GeoJSON
-                    data={boundary as any}
+                    data={boundaryData as any}
                     style={boundaryStyle}
-                    onEachFeature={onEachBoundaryFeature}
+                    onEachFeature={(feature: any, layer: L.Layer) => {
+                      const props = feature?.properties || {};
+                      const name = getBoundaryName(props);
+
+                      if (layer instanceof L.Path) {
+                        layer.on({
+                          mouseover: (e: any) => {
+                            e.target.setStyle({
+                              weight: 2.2,
+                              color: "#0f172a",
+                              dashArray: "",
+                            });
+                          },
+                          mouseout: (e: any) => {
+                            e.target.setStyle({
+                              weight: 1.4,
+                              color: "#475569",
+                              dashArray: "4 4",
+                            });
+                          },
+                        });
+                      }
+
+                      layer.bindTooltip(String(name), { sticky: true });
+                    }}
                   />
                 )}
 
                 {visibleVillages.map((item, rank) => {
-                  const f = item.feature;
-                  const [lng, lat] = f.geometry.coordinates;
-                  const props = f.properties || {};
-                  const name = item.name;
-                  const c24 = item.case2024;
-                  const c23 = item.case2023;
-                  const api = item.api;
-                  const diff = item.diff;
-                  const isTopVillage = visibleIndexSet.has(item.index);
+                  const feature = item.feature;
+                  const [lng, lat] = feature.geometry.coordinates;
+                  const props = feature.properties || {};
+                  const highlight = visibleSet.has(item.index);
 
                   if (mode === "Diff") {
-                    const meta = diffMeta(diff, isTopVillage);
+                    const meta = diffStyle(item.diff, highlight);
 
                     return (
                       <Marker
                         key={`diff-${item.index}`}
                         position={[lat, lng]}
-                        icon={createDiffDivIcon(meta)}
+                        icon={createDiffIcon(meta)}
                       >
                         <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                           <div className="text-xs">
                             <div className="font-semibold">
-                              #{rank + 1} {String(name)}
+                              #{rank + 1} {item.name}
                             </div>
-                            <div>Case2024: {c24}</div>
-                            <div>Case2023: {c23}</div>
+                            <div>Case 2024: {item.case2024}</div>
+                            <div>Case 2023: {item.case2023}</div>
                             <div>
-                              Change: {meta.label} ({diff > 0 ? `+${diff}` : diff})
+                              Change: {meta.label} ({item.diff > 0 ? `+${item.diff}` : item.diff})
                             </div>
                           </div>
                         </Tooltip>
@@ -567,20 +579,20 @@ export function MapTab() {
                         <Popup>
                           <div className="min-w-[220px] text-sm">
                             <div className="mb-2 text-base font-semibold">
-                              #{rank + 1} {String(name)}
+                              #{rank + 1} {item.name}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">Case2024:</span> {c24}
+                              <span className="font-medium">Case 2024:</span> {item.case2024}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">Case2023:</span> {c23}
+                              <span className="font-medium">Case 2023:</span> {item.case2023}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">API:</span> {api.toFixed(2)}
+                              <span className="font-medium">API:</span> {item.api.toFixed(2)}
                             </div>
                             <div className="mb-2">
-                              <span className="font-medium">Difference:</span>{" "}
-                              {meta.label} ({diff > 0 ? `+${diff}` : diff})
+                              <span className="font-medium">Difference:</span> {meta.label} (
+                              {item.diff > 0 ? `+${item.diff}` : item.diff})
                             </div>
 
                             {Object.entries(props).map(([key, value]) => (
@@ -599,52 +611,52 @@ export function MapTab() {
 
                   const style =
                     mode === "Case"
-                      ? caseStyle(c24, isTopVillage)
-                      : apiStyle(api, isTopVillage);
+                      ? caseStyle(item.case2024, highlight)
+                      : apiStyle(item.api, highlight);
 
                   return (
                     <CircleMarker
                       key={`circle-${item.index}`}
                       center={[lat, lng]}
-                      radius={style.r}
+                      radius={style.radius}
                       pathOptions={{
                         fillColor: style.fill,
                         color: style.stroke,
                         fillOpacity: 0.88,
-                        weight: isTopVillage ? 2 : 1.2,
+                        weight: highlight ? 2 : 1.2,
                       }}
                     >
                       <Tooltip direction="top" offset={[0, -6]} opacity={1}>
                         <div className="text-xs">
                           <div className="font-semibold">
-                            #{rank + 1} {String(name)}
+                            #{rank + 1} {item.name}
                           </div>
-                          <div>Case2024: {c24}</div>
-                          <div>Case2023: {c23}</div>
-                          <div>API: {api.toFixed(2)}</div>
+                          <div>Case 2024: {item.case2024}</div>
+                          <div>Case 2023: {item.case2023}</div>
+                          <div>API: {item.api.toFixed(2)}</div>
                         </div>
                       </Tooltip>
 
                       <Popup>
                         <div className="min-w-[220px] text-sm">
                           <div className="mb-2 text-base font-semibold">
-                            #{rank + 1} {String(name)}
+                            #{rank + 1} {item.name}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">Case2024:</span> {c24}
+                            <span className="font-medium">Case 2024:</span> {item.case2024}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">Case2023:</span> {c23}
+                            <span className="font-medium">Case 2023:</span> {item.case2023}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">API:</span> {api.toFixed(2)}
+                            <span className="font-medium">API:</span> {item.api.toFixed(2)}
                           </div>
                           <div className="mb-2">
                             <span className="font-medium">Difference:</span>{" "}
-                            {diff > 0
-                              ? `Increase (+${diff})`
-                              : diff < 0
-                              ? `Decrease (${diff})`
+                            {item.diff > 0
+                              ? `Increase (+${item.diff})`
+                              : item.diff < 0
+                              ? `Decrease (${item.diff})`
                               : "Same (0)"}
                           </div>
 
@@ -663,7 +675,7 @@ export function MapTab() {
                 })}
               </MapContainer>
 
-              <Legend mode={mode} />
+              <MapLegend mode={mode} />
             </div>
 
             <div className="flex h-[780px] flex-col overflow-hidden rounded-2xl border border-border bg-background">
@@ -672,132 +684,112 @@ export function MapTab() {
                 <div className="text-sm text-muted-foreground">{rightPanelTitle}</div>
               </div>
 
-              <div className="space-y-3 overflow-y-auto p-4">
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-semibold">Overview</div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Total villages</div>
-                      <div className="text-2xl font-semibold">{summary.totalVillages}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Showing on map</div>
-                      <div className="text-2xl font-semibold">{visibleVillages.length}</div>
-                    </div>
-                  </div>
+              <div className="space-y-4 overflow-y-auto p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <InsightCard
+                    title="Total villages"
+                    value={summary.totalVillages}
+                    subtitle="All village points in the dataset"
+                  />
+                  <InsightCard
+                    title="Showing"
+                    value={visibleVillages.length}
+                    subtitle="Visible on the current map"
+                  />
                 </div>
 
                 {mode === "Case" && (
-                  <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                    <div className="mb-3 text-sm font-semibold">Case insights</div>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Total Case2024</div>
-                        <div className="text-xl font-semibold">{summary.totalCase2024}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">
-                          Cases in visible top villages
-                        </div>
-                        <div className="text-xl font-semibold">{summary.topTotalCase}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Total Case2023</div>
-                        <div className="text-xl font-semibold">{summary.totalCase2023}</div>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <InsightCard
+                      title="Total Case 2024"
+                      value={summary.totalCase2024}
+                      subtitle="Across all villages"
+                      tone="red"
+                    />
+                    <InsightCard
+                      title="Visible village cases"
+                      value={summary.visibleTotalCases}
+                      subtitle="Sum of villages currently displayed"
+                      tone="amber"
+                    />
                   </div>
                 )}
 
                 {mode === "API" && (
-                  <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                    <div className="mb-3 text-sm font-semibold">API insights</div>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Average API, all villages</div>
-                        <div className="text-xl font-semibold">{summary.avgAPI.toFixed(2)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">
-                          Average API, visible villages
-                        </div>
-                        <div className="text-xl font-semibold">
-                          {summary.topAvgAPI.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <InsightCard
+                      title="Average API"
+                      value={summary.avgApi.toFixed(2)}
+                      subtitle="Across all villages"
+                      tone="amber"
+                    />
+                    <InsightCard
+                      title="Visible average API"
+                      value={summary.visibleAvgApi.toFixed(2)}
+                      subtitle="For villages currently displayed"
+                      tone="default"
+                    />
                   </div>
                 )}
 
                 {mode === "Diff" && (
-                  <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                    <div className="mb-3 text-sm font-semibold">Change insights</div>
-                    <div className="space-y-3 text-sm">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-lg bg-red-50 p-3">
-                          <div className="text-xs text-muted-foreground">Increase</div>
-                          <div className="text-xl font-semibold text-red-600">
-                            {summary.topIncrease}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-blue-50 p-3">
-                          <div className="text-xs text-muted-foreground">Decrease</div>
-                          <div className="text-xl font-semibold text-blue-600">
-                            {summary.topDecrease}
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-slate-100 p-3">
-                          <div className="text-xs text-muted-foreground">Same</div>
-                          <div className="text-xl font-semibold text-slate-600">
-                            {summary.topSame}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Counts above are for currently visible ranked villages.
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <InsightCard
+                      title="Increase"
+                      value={summary.increaseCount}
+                      subtitle="Visible villages with higher cases than previous year"
+                      tone="red"
+                    />
+                    <InsightCard
+                      title="Decrease"
+                      value={summary.decreaseCount}
+                      subtitle="Visible villages with lower cases than previous year"
+                      tone="blue"
+                    />
+                    <InsightCard
+                      title="Same"
+                      value={summary.sameCount}
+                      subtitle="Visible villages with unchanged cases"
+                      tone="slate"
+                    />
                   </div>
                 )}
 
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="rounded-2xl border border-border p-4 shadow-sm">
                   <div className="mb-3 text-sm font-semibold">Top villages</div>
                   <div className="space-y-2">
-                    {visibleVillages.map((v, idx) => (
-                      <div
-                        key={`${v.name}-${idx}`}
-                        className="rounded-lg border border-border/70 p-3"
-                      >
+                    {visibleVillages.map((item, idx) => (
+                      <div key={`${item.name}-${idx}`} className="rounded-xl border border-border/70 p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="font-medium">
-                              #{idx + 1} {v.name}
+                              #{idx + 1} {item.name}
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              Case2024: {v.case2024} | Case2023: {v.case2023} | API:{" "}
-                              {v.api.toFixed(2)}
+                              Case 2024: {item.case2024} | Case 2023: {item.case2023} | API:{" "}
+                              {item.api.toFixed(2)}
                             </div>
                           </div>
 
                           {mode === "Diff" ? (
                             <span
                               className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                v.diff > 0
+                                item.diff > 0
                                   ? "bg-red-100 text-red-700"
-                                  : v.diff < 0
+                                  : item.diff < 0
                                   ? "bg-blue-100 text-blue-700"
                                   : "bg-slate-100 text-slate-700"
                               }`}
                             >
-                              {v.diff > 0 ? `↑ +${v.diff}` : v.diff < 0 ? `↓ ${v.diff}` : "– 0"}
+                              {item.diff > 0 ? `↑ +${item.diff}` : item.diff < 0 ? `↓ ${item.diff}` : "– 0"}
                             </span>
                           ) : mode === "API" ? (
                             <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                              API {v.api.toFixed(2)}
+                              API {item.api.toFixed(2)}
                             </span>
                           ) : (
                             <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                              {v.case2024} cases
+                              {item.case2024} cases
                             </span>
                           )}
                         </div>
@@ -806,19 +798,12 @@ export function MapTab() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <div className="mb-2 text-sm font-semibold">How this view works</div>
+                <div className="rounded-2xl border border-border p-4 shadow-sm">
+                  <div className="mb-2 text-sm font-semibold">Notes</div>
                   <div className="space-y-2 text-xs text-muted-foreground">
-                    <div>
-                      The map currently displays only the selected top-ranked villages.
-                    </div>
-                    <div>
-                      Ranking is based on the selected classification: Case, API, or
-                      absolute year-to-year difference.
-                    </div>
-                    <div>
-                      Union boundaries are shown as hollow outlines behind village points.
-                    </div>
+                    <div>Village labels are taken from the <span className="font-medium text-foreground">VIL_N_E</span> field.</div>
+                    <div>The map shows the selected top-ranked villages based on the current classification.</div>
+                    <div>Union boundaries are displayed as hollow outlines behind village points.</div>
                   </div>
                 </div>
               </div>
