@@ -115,7 +115,12 @@ function demoApi(props: VillageProps, index: number) {
   return Number((10 + (index % 6) * 1.4).toFixed(2));
 }
 
-function buildDemoHistory(case2023: number, case2024: number, api2024: number, index: number) {
+function buildDemoHistory(
+  case2023: number,
+  case2024: number,
+  api2024: number,
+  index: number
+) {
   const growth = case2024 - case2023;
 
   const case2022 = Math.max(
@@ -134,16 +139,34 @@ function buildDemoHistory(case2023: number, case2024: number, api2024: number, i
   const safeCase = (v: number) => Math.max(0, v);
 
   const api2023 = Number(
-    Math.max(0.05, api2024 * (case2023 + 1) / (case2024 + 1) + ((index % 3) - 1) * 0.12).toFixed(2)
+    Math.max(
+      0.05,
+      (api2024 * (case2023 + 1)) / (case2024 + 1) + ((index % 3) - 1) * 0.12
+    ).toFixed(2)
   );
   const api2022 = Number(
-    Math.max(0.05, api2023 * 0.9 + (safeCase(case2022) - safeCase(case2023)) * 0.05 + ((index % 4) - 1.5) * 0.08).toFixed(2)
+    Math.max(
+      0.05,
+      api2023 * 0.9 +
+        (safeCase(case2022) - safeCase(case2023)) * 0.05 +
+        ((index % 4) - 1.5) * 0.08
+    ).toFixed(2)
   );
   const api2021 = Number(
-    Math.max(0.05, api2022 * 0.9 + (safeCase(case2021) - safeCase(case2022)) * 0.05 + ((index % 5) - 2) * 0.05).toFixed(2)
+    Math.max(
+      0.05,
+      api2022 * 0.9 +
+        (safeCase(case2021) - safeCase(case2022)) * 0.05 +
+        ((index % 5) - 2) * 0.05
+    ).toFixed(2)
   );
   const api2020 = Number(
-    Math.max(0.05, api2021 * 0.92 + (safeCase(case2020) - safeCase(case2021)) * 0.05 + ((index % 2) - 0.5) * 0.04).toFixed(2)
+    Math.max(
+      0.05,
+      api2021 * 0.92 +
+        (safeCase(case2020) - safeCase(case2021)) * 0.05 +
+        ((index % 2) - 0.5) * 0.04
+    ).toFixed(2)
   );
 
   return [
@@ -341,11 +364,18 @@ function MapLegend({ mode }: { mode: ClassifyMode }) {
   return (
     <div className="absolute bottom-4 left-4 z-[1000] w-48 rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 shadow-xl backdrop-blur">
       <div className="mb-2 text-sm font-semibold text-slate-900">
-        {mode === "Case" ? "Case 2024" : mode === "API" ? "API" : "Year-on-year change"}
+        {mode === "Case"
+          ? "Case 2024"
+          : mode === "API"
+          ? "API"
+          : "Year-on-year change"}
       </div>
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2.5 text-xs text-slate-700">
+          <div
+            key={item.label}
+            className="flex items-center gap-2.5 text-xs text-slate-700"
+          >
             {"symbol" in item ? (
               <span
                 className="flex h-6 w-6 items-center justify-center rounded-full border border-white/50 text-sm font-bold text-white"
@@ -414,15 +444,21 @@ function MetricCard({
           <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             {title}
           </div>
-          <div className={`mt-2 text-3xl font-semibold leading-none ${accentMap.value}`}>
+          <div
+            className={`mt-2 text-3xl font-semibold leading-none ${accentMap.value}`}
+          >
             {value}
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${accentMap.badge}`}>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${accentMap.badge}`}
+        >
           KPI
         </span>
       </div>
-      {subtitle ? <div className="mt-3 text-xs leading-5 text-slate-500">{subtitle}</div> : null}
+      {subtitle ? (
+        <div className="mt-3 text-xs leading-5 text-slate-500">{subtitle}</div>
+      ) : null}
     </div>
   );
 }
@@ -432,183 +468,166 @@ function formatDiff(diff: number) {
   return `${diff}`;
 }
 
-function getLineColor(index: number) {
-  const palette = [
-    "#DC2626",
-    "#2563EB",
-    "#0F766E",
-    "#D97706",
-    "#7C3AED",
-    "#0891B2",
-    "#BE123C",
-    "#4F46E5",
-    "#65A30D",
-    "#EA580C",
-    "#1D4ED8",
-    "#0D9488",
-    "#9333EA",
-    "#CA8A04",
-    "#E11D48",
-    "#0369A1",
-    "#7C2D12",
-    "#334155",
-    "#16A34A",
-    "#A21CAF",
-    "#0284C7",
-    "#B45309",
-    "#1E40AF",
-    "#BE185D",
-    "#0F766E",
-    "#374151",
-    "#4D7C0F",
-    "#C2410C",
-    "#5B21B6",
-    "#047857",
-  ];
-  return palette[index % palette.length];
+function getTrendStroke(history: HistoryPoint[]) {
+  const first = history[0]?.case ?? 0;
+  const last = history[history.length - 1]?.case ?? 0;
+
+  if (last > first) return "#DC2626";
+  if (last < first) return "#2563EB";
+  return "#64748B";
 }
 
-function MiniTrendChart({
-  title,
-  villages,
-  metric,
-  formatter,
+function IndividualVillageTrendCard({
+  village,
+  rank,
 }: {
-  title: string;
-  villages: RankedVillage[];
-  metric: "case" | "api";
-  formatter?: (value: number) => string;
+  village: RankedVillage;
+  rank: number;
 }) {
-  const width = 300;
+  const width = 320;
   const height = 180;
-  const padding = { top: 18, right: 16, bottom: 28, left: 36 };
+  const padding = { top: 18, right: 16, bottom: 28, left: 34 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  const years = [2020, 2021, 2022, 2023, 2024];
-
-  const allValues = villages.flatMap((v) => v.history.map((d) => d[metric]));
-  const maxValue = Math.max(...allValues, 1);
-  const minValue = Math.min(...allValues, 0);
+  const years = village.history.map((d) => d.year);
+  const values = village.history.map((d) => d.case);
+  const maxValue = Math.max(...values, 1);
+  const minValue = 0;
   const range = maxValue - minValue || 1;
-
-  const yTicks = 4;
+  const stroke = getTrendStroke(village.history);
 
   const x = (year: number) =>
-    padding.left + ((year - years[0]) / (years[years.length - 1] - years[0])) * chartWidth;
+    padding.left +
+    ((year - years[0]) / (years[years.length - 1] - years[0])) * chartWidth;
 
   const y = (value: number) =>
     padding.top + ((maxValue - value) / range) * chartHeight;
 
-  const makePath = (series: HistoryPoint[]) =>
-    series
-      .map((point, i) => `${i === 0 ? "M" : "L"} ${x(point.year)} ${y(point[metric])}`)
-      .join(" ");
+  const path = village.history
+    .map((point, i) => `${i === 0 ? "M" : "L"} ${x(point.year)} ${y(point.case)}`)
+    .join(" ");
+
+  const yTicks = 4;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-1 text-sm font-semibold text-slate-900">{title}</div>
-      <div className="mb-3 text-xs leading-5 text-slate-500">
-        Individual village trends for the currently filtered set ({villages.length} villages).
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Village #{rank}
+          </div>
+          <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+            {village.name}
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            2024: {village.case2024} · 2023: {village.case2023}
+          </div>
+        </div>
+
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+            village.diff > 0
+              ? "bg-red-50 text-red-700"
+              : village.diff < 0
+              ? "bg-blue-50 text-blue-700"
+              : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          {village.diff > 0
+            ? `↑ ${formatDiff(village.diff)}`
+            : village.diff < 0
+            ? `↓ ${formatDiff(village.diff)}`
+            : "– 0"}
+        </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="h-[190px] min-w-[300px] w-full"
-          role="img"
-          aria-label={title}
-        >
-          <rect x="0" y="0" width={width} height={height} fill="white" rx="16" />
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-[170px] w-full"
+        role="img"
+        aria-label={`Case trend for ${village.name}`}
+      >
+        <rect x="0" y="0" width={width} height={height} fill="white" rx="16" />
 
-          {Array.from({ length: yTicks + 1 }).map((_, i) => {
-            const value = minValue + ((yTicks - i) / yTicks) * range;
-            const yPos = padding.top + (i / yTicks) * chartHeight;
-            return (
-              <g key={i}>
-                <line
-                  x1={padding.left}
-                  y1={yPos}
-                  x2={width - padding.right}
-                  y2={yPos}
-                  stroke="#E2E8F0"
-                  strokeWidth="1"
-                />
-                <text
-                  x={padding.left - 8}
-                  y={yPos + 4}
-                  textAnchor="end"
-                  fontSize="10"
-                  fill="#64748B"
-                >
-                  {formatter ? formatter(Number(value.toFixed(metric === "api" ? 1 : 0))) : value}
-                </text>
-              </g>
-            );
-          })}
+        {Array.from({ length: yTicks + 1 }).map((_, i) => {
+          const value = ((yTicks - i) / yTicks) * maxValue;
+          const yPos = padding.top + (i / yTicks) * chartHeight;
 
-          {years.map((year) => (
-            <g key={year}>
+          return (
+            <g key={i}>
               <line
-                x1={x(year)}
-                y1={padding.top}
-                x2={x(year)}
-                y2={height - padding.bottom}
-                stroke="#F1F5F9"
+                x1={padding.left}
+                y1={yPos}
+                x2={width - padding.right}
+                y2={yPos}
+                stroke="#E2E8F0"
                 strokeWidth="1"
               />
               <text
-                x={x(year)}
-                y={height - 10}
-                textAnchor="middle"
+                x={padding.left - 8}
+                y={yPos + 4}
+                textAnchor="end"
                 fontSize="10"
                 fill="#64748B"
               >
-                {year}
+                {Math.round(value)}
               </text>
             </g>
-          ))}
+          );
+        })}
 
-          {villages.map((village, idx) => {
-            const color = getLineColor(idx);
-            return (
-              <g key={`${village.name}-${metric}`}>
-                <path
-                  d={makePath(village.history)}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {village.history.map((point) => (
-                  <circle
-                    key={`${village.name}-${point.year}-${metric}`}
-                    cx={x(point.year)}
-                    cy={y(point[metric])}
-                    r="2.6"
-                    fill={color}
-                  />
-                ))}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {villages.map((village, idx) => (
-          <span
-            key={`${village.name}-legend-${metric}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700"
-          >
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: getLineColor(idx) }}
+        {years.map((year) => (
+          <g key={year}>
+            <line
+              x1={x(year)}
+              y1={padding.top}
+              x2={x(year)}
+              y2={height - padding.bottom}
+              stroke="#F8FAFC"
+              strokeWidth="1"
             />
-            <span className="max-w-[160px] truncate">{village.name}</span>
-          </span>
+            <text
+              x={x(year)}
+              y={height - 10}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#64748B"
+            >
+              {year}
+            </text>
+          </g>
         ))}
-      </div>
+
+        <path
+          d={path}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {village.history.map((point) => (
+          <g key={`${village.name}-${point.year}`}>
+            <circle
+              cx={x(point.year)}
+              cy={y(point.case)}
+              r="3.2"
+              fill={stroke}
+            />
+            <text
+              x={x(point.year)}
+              y={y(point.case) - 8}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#334155"
+              fontWeight="600"
+            >
+              {point.case}
+            </text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -645,7 +664,8 @@ export function MapTab() {
     if (!villageData) return [];
     return villageData.features.filter(
       (feature): feature is PointFeature =>
-        feature.geometry?.type === "Point" && Array.isArray(feature.geometry.coordinates)
+        feature.geometry?.type === "Point" &&
+        Array.isArray(feature.geometry.coordinates)
     );
   }, [villageData]);
 
@@ -701,17 +721,23 @@ export function MapTab() {
           ) / pointFeatures.length
         : 0;
 
-    const visibleTotalCases = visibleVillages.reduce((sum, item) => sum + item.case2024, 0);
+    const visibleTotalCases = visibleVillages.reduce(
+      (sum, item) => sum + item.case2024,
+      0
+    );
     const visibleAvgApi =
       visibleVillages.length > 0
-        ? visibleVillages.reduce((sum, item) => sum + item.api, 0) / visibleVillages.length
+        ? visibleVillages.reduce((sum, item) => sum + item.api, 0) /
+          visibleVillages.length
         : 0;
 
     const increaseCount = visibleVillages.filter((item) => item.diff > 0).length;
     const decreaseCount = visibleVillages.filter((item) => item.diff < 0).length;
     const sameCount = visibleVillages.filter((item) => item.diff === 0).length;
 
-    const maxCaseVillage = [...rankedVillages].sort((a, b) => b.case2024 - a.case2024)[0];
+    const maxCaseVillage = [...rankedVillages].sort(
+      (a, b) => b.case2024 - a.case2024
+    )[0];
     const maxApiVillage = [...rankedVillages].sort((a, b) => b.api - a.api)[0];
     const maxDiffVillage = [...rankedVillages].sort(
       (a, b) => Math.abs(b.diff) - Math.abs(a.diff)
@@ -752,7 +778,7 @@ export function MapTab() {
       ? "Village API summary"
       : "Village change summary";
 
-  const showTrendCharts = topCount !== 999999 && visibleVillages.length > 0;
+  const showTrendCards = topCount !== 999999 && visibleVillages.length > 0;
 
   return (
     <div className="panel overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/70 shadow-sm">
@@ -763,9 +789,9 @@ export function MapTab() {
               Village Map Panel
             </div>
             <div className="max-w-3xl text-sm leading-6 text-slate-600">
-              Explore Lama villages by 2024 case burden, API, and year-on-year change. All
-              villages are displayed by default, with union boundaries shown as hollow reference
-              outlines.
+              Explore Lama villages by 2024 case burden, API, and year-on-year
+              change. All villages are displayed by default, with union boundaries
+              shown as hollow reference outlines.
             </div>
           </div>
 
@@ -825,7 +851,7 @@ export function MapTab() {
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
             <div className="relative h-[780px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <MapContainer
                 center={[22.1, 92.1]}
@@ -934,17 +960,20 @@ export function MapTab() {
                               #{rank + 1} {item.name}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">Case 2024:</span> {item.case2024}
+                              <span className="font-medium">Case 2024:</span>{" "}
+                              {item.case2024}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">Case 2023:</span> {item.case2023}
+                              <span className="font-medium">Case 2023:</span>{" "}
+                              {item.case2023}
                             </div>
                             <div className="mb-1">
-                              <span className="font-medium">API:</span> {item.api.toFixed(2)}
+                              <span className="font-medium">API:</span>{" "}
+                              {item.api.toFixed(2)}
                             </div>
                             <div className="mb-2">
-                              <span className="font-medium">Difference:</span> {meta.label} (
-                              {formatDiff(item.diff)})
+                              <span className="font-medium">Difference:</span>{" "}
+                              {meta.label} ({formatDiff(item.diff)})
                             </div>
 
                             {Object.entries(props).map(([key, value]) => (
@@ -996,13 +1025,16 @@ export function MapTab() {
                             #{rank + 1} {item.name}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">Case 2024:</span> {item.case2024}
+                            <span className="font-medium">Case 2024:</span>{" "}
+                            {item.case2024}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">Case 2023:</span> {item.case2023}
+                            <span className="font-medium">Case 2023:</span>{" "}
+                            {item.case2023}
                           </div>
                           <div className="mb-1">
-                            <span className="font-medium">API:</span> {item.api.toFixed(2)}
+                            <span className="font-medium">API:</span>{" "}
+                            {item.api.toFixed(2)}
                           </div>
                           <div className="mb-2">
                             <span className="font-medium">Difference:</span>{" "}
@@ -1167,21 +1199,28 @@ export function MapTab() {
                   </>
                 )}
 
-                {showTrendCharts && (
-                  <>
-                    <MiniTrendChart
-                      title="Historical Case Trend"
-                      villages={visibleVillages}
-                      metric="case"
-                      formatter={(value) => `${Math.round(value)}`}
-                    />
-                    <MiniTrendChart
-                      title="Historical API Trend"
-                      villages={visibleVillages}
-                      metric="api"
-                      formatter={(value) => Number(value).toFixed(1)}
-                    />
-                  </>
+                {showTrendCards && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="mb-3">
+                      <div className="text-sm font-semibold text-slate-900">
+                        Individual village case trends
+                      </div>
+                      <div className="mt-1 text-xs leading-5 text-slate-500">
+                        Showing one case trend chart for each village in the current
+                        filtered selection.
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {visibleVillages.map((village, idx) => (
+                        <IndividualVillageTrendCard
+                          key={`${village.name}-${idx}-trend-card`}
+                          village={village}
+                          rank={idx + 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1211,8 +1250,8 @@ export function MapTab() {
                               #{idx + 1} {item.name}
                             </div>
                             <div className="mt-1 text-xs leading-5 text-slate-500">
-                              Case 2024: {item.case2024} · Case 2023: {item.case2023} · API:{" "}
-                              {item.api.toFixed(2)}
+                              Case 2024: {item.case2024} · Case 2023: {item.case2023} ·
+                              API: {item.api.toFixed(2)}
                             </div>
                           </div>
 
