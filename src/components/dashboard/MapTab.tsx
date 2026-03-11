@@ -61,6 +61,10 @@ function numberValue(value: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
 function getVillageName(props: VillageProps) {
   return (
     props.VIL_N_E ||
@@ -94,6 +98,11 @@ function getVillageLocation(props: VillageProps) {
   return [props.union, props.upazila, props.district].filter(Boolean).join(" • ");
 }
 
+function seededNoise(index: number, salt = 1) {
+  const x = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 function demoCase2023(props: VillageProps, index: number) {
   if (
     props.Case2023 !== undefined &&
@@ -104,8 +113,29 @@ function demoCase2023(props: VillageProps, index: number) {
   }
 
   const current = numberValue(props.Case2024);
-  const offset = (index % 5) - 2;
-  return Math.max(0, current - offset);
+  const pattern = index % 7;
+  const noise = seededNoise(index, 2);
+
+  if (current === 0) {
+    return pattern === 0 ? 1 : 0;
+  }
+
+  if (current <= 3) {
+    return Math.max(0, Math.round(current + (pattern - 3) * 0.4 + noise));
+  }
+
+  if (current <= 10) {
+    const shift = [-3, -2, -1, 0, 1, 2, 4][pattern];
+    return Math.max(0, Math.round(current - shift + noise * 2 - 1));
+  }
+
+  if (current <= 25) {
+    const factor = [0.7, 0.82, 0.95, 1.05, 1.12, 1.22, 0.9][pattern];
+    return Math.max(0, Math.round(current * factor + noise * 3 - 1));
+  }
+
+  const factor = [0.62, 0.78, 0.88, 0.98, 1.08, 1.18, 1.28][pattern];
+  return Math.max(0, Math.round(current * factor + noise * 4 - 2));
 }
 
 function demoApi(props: VillageProps, index: number) {
@@ -114,11 +144,26 @@ function demoApi(props: VillageProps, index: number) {
   }
 
   const cases = numberValue(props.Case2024);
+  const noise = seededNoise(index, 3);
+  const pattern = index % 8;
 
-  if (cases === 0) return Number((0.1 + (index % 3) * 0.1).toFixed(2));
-  if (cases <= 5) return Number((0.8 + (index % 4) * 0.35).toFixed(2));
-  if (cases <= 20) return Number((3 + (index % 5) * 0.9).toFixed(2));
-  return Number((10 + (index % 6) * 1.4).toFixed(2));
+  if (cases === 0) {
+    return Number((0.05 + pattern * 0.08 + noise * 0.15).toFixed(2));
+  }
+
+  if (cases <= 4) {
+    return Number((0.45 + pattern * 0.22 + noise * 0.35).toFixed(2));
+  }
+
+  if (cases <= 12) {
+    return Number((1.8 + pattern * 0.45 + noise * 0.8).toFixed(2));
+  }
+
+  if (cases <= 25) {
+    return Number((4.2 + pattern * 0.8 + noise * 1.2).toFixed(2));
+  }
+
+  return Number((8 + pattern * 1.15 + noise * 1.75).toFixed(2));
 }
 
 function buildDemoHistory(
@@ -127,60 +172,66 @@ function buildDemoHistory(
   api2024: number,
   index: number
 ) {
-  const growth = case2024 - case2023;
+  const pattern = index % 10;
+  const noise1 = seededNoise(index, 11);
+  const noise2 = seededNoise(index, 17);
+  const noise3 = seededNoise(index, 23);
+  const noise4 = seededNoise(index, 29);
 
-  const case2022 = Math.max(
-    0,
-    Math.round(case2023 - growth * 0.7 - ((index % 4) - 1))
-  );
-  const case2021 = Math.max(
-    0,
-    Math.round(case2022 - growth * 0.5 - ((index % 3) - 1))
-  );
-  const case2020 = Math.max(
-    0,
-    Math.round(case2021 - growth * 0.35 - ((index % 5) - 2))
-  );
+  const trendType = pattern < 2 ? "surge" : pattern < 4 ? "decline" : pattern < 6 ? "volatile" : pattern < 8 ? "steady-up" : "steady-down";
 
-  const safeCase = (v: number) => Math.max(0, v);
+  let case2022 = case2023;
+  let case2021 = case2023;
+  let case2020 = case2023;
 
-  const api2023 = Number(
-    Math.max(
-      0.05,
-      (api2024 * (case2023 + 1)) / (case2024 + 1) + ((index % 3) - 1) * 0.12
-    ).toFixed(2)
-  );
-  const api2022 = Number(
-    Math.max(
-      0.05,
-      api2023 * 0.9 +
-        (safeCase(case2022) - safeCase(case2023)) * 0.05 +
-        ((index % 4) - 1.5) * 0.08
-    ).toFixed(2)
-  );
-  const api2021 = Number(
-    Math.max(
-      0.05,
-      api2022 * 0.9 +
-        (safeCase(case2021) - safeCase(case2022)) * 0.05 +
-        ((index % 5) - 2) * 0.05
-    ).toFixed(2)
-  );
-  const api2020 = Number(
-    Math.max(
-      0.05,
-      api2021 * 0.92 +
-        (safeCase(case2020) - safeCase(case2021)) * 0.05 +
-        ((index % 2) - 0.5) * 0.04
-    ).toFixed(2)
-  );
+  if (trendType === "surge") {
+    case2022 = Math.max(0, Math.round(case2023 * (0.55 + noise1 * 0.2)));
+    case2021 = Math.max(0, Math.round(case2022 * (0.75 + noise2 * 0.15)));
+    case2020 = Math.max(0, Math.round(case2021 * (0.8 + noise3 * 0.12)));
+  } else if (trendType === "decline") {
+    case2022 = Math.max(0, Math.round(case2023 * (1.2 + noise1 * 0.25)));
+    case2021 = Math.max(0, Math.round(case2022 * (1.08 + noise2 * 0.18)));
+    case2020 = Math.max(0, Math.round(case2021 * (1.06 + noise3 * 0.14)));
+  } else if (trendType === "volatile") {
+    case2022 = Math.max(0, Math.round(case2023 + (noise1 > 0.5 ? 1 : -1) * (2 + noise2 * 8)));
+    case2021 = Math.max(0, Math.round(case2022 + (noise3 > 0.5 ? 1 : -1) * (2 + noise4 * 9)));
+    case2020 = Math.max(0, Math.round(case2021 + (noise1 > 0.3 ? -1 : 1) * (1 + noise2 * 7)));
+  } else if (trendType === "steady-up") {
+    case2022 = Math.max(0, Math.round(case2023 * (0.84 + noise1 * 0.08)));
+    case2021 = Math.max(0, Math.round(case2022 * (0.84 + noise2 * 0.08)));
+    case2020 = Math.max(0, Math.round(case2021 * (0.86 + noise3 * 0.08)));
+  } else {
+    case2022 = Math.max(0, Math.round(case2023 * (1.08 + noise1 * 0.1)));
+    case2021 = Math.max(0, Math.round(case2022 * (1.06 + noise2 * 0.08)));
+    case2020 = Math.max(0, Math.round(case2021 * (1.04 + noise3 * 0.08)));
+  }
+
+  if (case2024 === 0) {
+    case2023 = clamp(case2023, 0, 2);
+    case2022 = clamp(case2022, 0, 3);
+    case2021 = clamp(case2021, 0, 4);
+    case2020 = clamp(case2020, 0, 5);
+  }
+
+  const apiScale = (caseVal: number, baseCase: number, baseApi: number, localNoise: number) => {
+    if (baseCase <= 0) {
+      return Number(Math.max(0.05, baseApi * (0.65 + localNoise * 0.35)).toFixed(2));
+    }
+    const ratio = (caseVal + 1) / (baseCase + 1);
+    return Number(Math.max(0.05, baseApi * ratio * (0.88 + localNoise * 0.25)).toFixed(2));
+  };
+
+  const api2023 = apiScale(case2023, case2024, api2024, noise1);
+  const api2022 = apiScale(case2022, case2024, api2024, noise2);
+  const api2021 = apiScale(case2021, case2024, api2024, noise3);
+  const api2020 = apiScale(case2020, case2024, api2024, noise4);
 
   return [
-    { year: 2020, case: safeCase(case2020), api: api2020 },
-    { year: 2021, case: safeCase(case2021), api: api2021 },
-    { year: 2022, case: safeCase(case2022), api: api2022 },
-    { year: 2023, case: safeCase(case2023), api: api2023 },
-    { year: 2024, case: safeCase(case2024), api: Number(api2024.toFixed(2)) },
+    { year: 2020, case: Math.max(0, case2020), api: api2020 },
+    { year: 2021, case: Math.max(0, case2021), api: api2021 },
+    { year: 2022, case: Math.max(0, case2022), api: api2022 },
+    { year: 2023, case: Math.max(0, case2023), api: api2023 },
+    { year: 2024, case: Math.max(0, case2024), api: Number(api2024.toFixed(2)) },
   ];
 }
 
@@ -518,10 +569,13 @@ function CompactSparkline({
   history: HistoryPoint[];
   active?: boolean;
 }) {
-  const width = 110;
-  const height = 38;
-  const padX = 4;
-  const padY = 5;
+  const width = 190;
+  const height = 68;
+  const padLeft = 8;
+  const padRight = 8;
+  const padTop = 18;
+  const padBottom = 16;
+
   const values = history.map((d) => d.case);
   const maxValue = Math.max(...values, 1);
   const minValue = Math.min(...values, 0);
@@ -529,22 +583,19 @@ function CompactSparkline({
   const stroke = getTrendStroke(history);
 
   const x = (i: number) =>
-    padX + (i / Math.max(1, history.length - 1)) * (width - padX * 2);
+    padLeft + (i / Math.max(1, history.length - 1)) * (width - padLeft - padRight);
 
   const y = (value: number) =>
-    padY + ((maxValue - value) / range) * (height - padY * 2);
+    padTop + ((maxValue - value) / range) * (height - padTop - padBottom);
 
   const path = history
     .map((point, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(point.case)}`)
     .join(" ");
 
-  const last = history[history.length - 1];
-  const first = history[0];
-
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-10 w-28 shrink-0"
+      className="h-[68px] w-[190px] shrink-0"
       role="img"
       aria-label="Village trend sparkline"
     >
@@ -552,12 +603,41 @@ function CompactSparkline({
         d={path}
         fill="none"
         stroke={stroke}
-        strokeWidth={active ? 2.6 : 2.2}
+        strokeWidth={active ? 2.8 : 2.4}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={x(0)} cy={y(first.case)} r="2" fill={stroke} opacity="0.7" />
-      <circle cx={x(history.length - 1)} cy={y(last.case)} r="2.6" fill={stroke} />
+
+      {history.map((point, i) => (
+        <g key={`${point.year}-${point.case}-${i}`}>
+          <circle
+            cx={x(i)}
+            cy={y(point.case)}
+            r={i === history.length - 1 ? 2.7 : 2.1}
+            fill={stroke}
+            opacity={i === history.length - 1 ? 1 : 0.85}
+          />
+          <text
+            x={x(i)}
+            y={Math.max(10, y(point.case) - 5)}
+            textAnchor="middle"
+            fontSize="8.5"
+            fontWeight="600"
+            fill="#334155"
+          >
+            {point.case}
+          </text>
+          <text
+            x={x(i)}
+            y={height - 3}
+            textAnchor="middle"
+            fontSize="8.5"
+            fill="#64748B"
+          >
+            {point.year}
+          </text>
+        </g>
+      ))}
     </svg>
   );
 }
@@ -870,7 +950,7 @@ export function MapTab() {
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
             <div className="relative h-[760px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <MapContainer
                 center={[22.1, 92.1]}
@@ -1191,7 +1271,7 @@ export function MapTab() {
                       </span>
                     </div>
 
-                    <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                    <div className="max-h-[390px] space-y-2 overflow-y-auto pr-1">
                       {trendPreviewVillages.map((village, idx) => (
                         <TrendRow
                           key={`${village.name}-${idx}-trend-row`}
