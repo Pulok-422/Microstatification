@@ -178,7 +178,16 @@ function buildDemoHistory(
   const noise3 = seededNoise(index, 23);
   const noise4 = seededNoise(index, 29);
 
-  const trendType = pattern < 2 ? "surge" : pattern < 4 ? "decline" : pattern < 6 ? "volatile" : pattern < 8 ? "steady-up" : "steady-down";
+  const trendType =
+    pattern < 2
+      ? "surge"
+      : pattern < 4
+      ? "decline"
+      : pattern < 6
+      ? "volatile"
+      : pattern < 8
+      ? "steady-up"
+      : "steady-down";
 
   let case2022 = case2023;
   let case2021 = case2023;
@@ -193,9 +202,18 @@ function buildDemoHistory(
     case2021 = Math.max(0, Math.round(case2022 * (1.08 + noise2 * 0.18)));
     case2020 = Math.max(0, Math.round(case2021 * (1.06 + noise3 * 0.14)));
   } else if (trendType === "volatile") {
-    case2022 = Math.max(0, Math.round(case2023 + (noise1 > 0.5 ? 1 : -1) * (2 + noise2 * 8)));
-    case2021 = Math.max(0, Math.round(case2022 + (noise3 > 0.5 ? 1 : -1) * (2 + noise4 * 9)));
-    case2020 = Math.max(0, Math.round(case2021 + (noise1 > 0.3 ? -1 : 1) * (1 + noise2 * 7)));
+    case2022 = Math.max(
+      0,
+      Math.round(case2023 + (noise1 > 0.5 ? 1 : -1) * (2 + noise2 * 8))
+    );
+    case2021 = Math.max(
+      0,
+      Math.round(case2022 + (noise3 > 0.5 ? 1 : -1) * (2 + noise4 * 9))
+    );
+    case2020 = Math.max(
+      0,
+      Math.round(case2021 + (noise1 > 0.3 ? -1 : 1) * (1 + noise2 * 7))
+    );
   } else if (trendType === "steady-up") {
     case2022 = Math.max(0, Math.round(case2023 * (0.84 + noise1 * 0.08)));
     case2021 = Math.max(0, Math.round(case2022 * (0.84 + noise2 * 0.08)));
@@ -213,12 +231,21 @@ function buildDemoHistory(
     case2020 = clamp(case2020, 0, 5);
   }
 
-  const apiScale = (caseVal: number, baseCase: number, baseApi: number, localNoise: number) => {
+  const apiScale = (
+    caseVal: number,
+    baseCase: number,
+    baseApi: number,
+    localNoise: number
+  ) => {
     if (baseCase <= 0) {
-      return Number(Math.max(0.05, baseApi * (0.65 + localNoise * 0.35)).toFixed(2));
+      return Number(
+        Math.max(0.05, baseApi * (0.65 + localNoise * 0.35)).toFixed(2)
+      );
     }
     const ratio = (caseVal + 1) / (baseCase + 1);
-    return Number(Math.max(0.05, baseApi * ratio * (0.88 + localNoise * 0.25)).toFixed(2));
+    return Number(
+      Math.max(0.05, baseApi * ratio * (0.88 + localNoise * 0.25)).toFixed(2)
+    );
   };
 
   const api2023 = apiScale(case2023, case2024, api2024, noise1);
@@ -569,7 +596,7 @@ function CompactSparkline({
   history: HistoryPoint[];
   active?: boolean;
 }) {
-  const width = 190;
+  const width = 176;
   const height = 68;
   const padLeft = 8;
   const padRight = 8;
@@ -595,7 +622,7 @@ function CompactSparkline({
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-[68px] w-[190px] shrink-0"
+      className="h-[68px] w-[176px] shrink-0"
       role="img"
       aria-label="Village trend sparkline"
     >
@@ -664,40 +691,46 @@ function TrendRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
+      className={`w-full rounded-2xl border px-3 py-2.5 text-left transition ${
         isActive
           ? "border-blue-300 bg-blue-50"
           : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-            #{rank}
-          </span>
-          <div className="truncate text-sm font-medium text-slate-900">
-            {village.name}
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-[1.35]">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+              #{rank}
+            </span>
+            <div
+              className="text-sm font-medium leading-5 text-slate-900"
+              title={village.name}
+            >
+              {village.name}
+            </div>
+          </div>
+
+          <div className="mt-1.5 space-y-1 text-[11px] text-slate-500">
+            <div>2024: {village.case2024}</div>
+            <div>2023: {village.case2023}</div>
+            <div>API: {village.api.toFixed(2)}</div>
           </div>
         </div>
 
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-          <span>2024: {village.case2024}</span>
-          <span>2023: {village.case2023}</span>
-          <span>API: {village.api.toFixed(2)}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <CompactSparkline history={village.history} active={isActive} />
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${diffTone}`}
+          >
+            {village.diff > 0
+              ? `↑ ${formatDiff(village.diff)}`
+              : village.diff < 0
+              ? `↓ ${formatDiff(village.diff)}`
+              : "– 0"}
+          </span>
         </div>
       </div>
-
-      <CompactSparkline history={village.history} active={isActive} />
-
-      <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${diffTone}`}
-      >
-        {village.diff > 0
-          ? `↑ ${formatDiff(village.diff)}`
-          : village.diff < 0
-          ? `↓ ${formatDiff(village.diff)}`
-          : "– 0"}
-      </span>
     </button>
   );
 }
@@ -950,7 +983,7 @@ export function MapTab() {
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_460px]">
             <div className="relative h-[760px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <MapContainer
                 center={[22.1, 92.1]}
