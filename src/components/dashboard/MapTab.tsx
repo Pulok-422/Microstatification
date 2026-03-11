@@ -190,11 +190,11 @@ function caseStyle(value: number, isSelected = false, isDimmed = false, rank = 9
 
   if (value >= 21) {
     return {
-      radius: 13 + topBoost + baseExtra,
+      radius: 12.5 + topBoost + baseExtra,
       fill: "#C2410C",
       stroke: "#7C2D12",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   if (value >= 6) {
@@ -203,7 +203,7 @@ function caseStyle(value: number, isSelected = false, isDimmed = false, rank = 9
       fill: "#D97706",
       stroke: "#92400E",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   if (value >= 1) {
@@ -212,7 +212,7 @@ function caseStyle(value: number, isSelected = false, isDimmed = false, rank = 9
       fill: "#CA8A04",
       stroke: "#854D0E",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   return {
@@ -220,7 +220,7 @@ function caseStyle(value: number, isSelected = false, isDimmed = false, rank = 9
     fill: "#CBD5E1",
     stroke: "#64748B",
     opacity: isDimmed ? 0.25 : 1,
-    weight: isSelected ? 2.6 : 1.5,
+    weight: isSelected ? 2.5 : 1.4,
   };
 }
 
@@ -230,11 +230,11 @@ function apiStyle(value: number, isSelected = false, isDimmed = false, rank = 99
 
   if (value >= 10) {
     return {
-      radius: 13 + topBoost + baseExtra,
+      radius: 12.5 + topBoost + baseExtra,
       fill: "#0F766E",
       stroke: "#134E4A",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   if (value >= 5) {
@@ -243,7 +243,7 @@ function apiStyle(value: number, isSelected = false, isDimmed = false, rank = 99
       fill: "#0EA5A4",
       stroke: "#155E75",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   if (value >= 1) {
@@ -252,7 +252,7 @@ function apiStyle(value: number, isSelected = false, isDimmed = false, rank = 99
       fill: "#38BDF8",
       stroke: "#1D4ED8",
       opacity: isDimmed ? 0.25 : 1,
-      weight: isSelected ? 2.6 : 1.5,
+      weight: isSelected ? 2.5 : 1.4,
     };
   }
   return {
@@ -260,12 +260,12 @@ function apiStyle(value: number, isSelected = false, isDimmed = false, rank = 99
     fill: "#CBD5E1",
     stroke: "#64748B",
     opacity: isDimmed ? 0.25 : 1,
-    weight: isSelected ? 2.6 : 1.5,
+    weight: isSelected ? 2.5 : 1.4,
   };
 }
 
 function diffStyle(diff: number, isSelected = false, rank = 999) {
-  const base = isSelected ? 15 : 12.5;
+  const base = isSelected ? 14.5 : 12;
   const topBoost = rank < 3 ? 2 : rank < 10 ? 1 : 0;
 
   if (diff > 0) {
@@ -314,10 +314,10 @@ function createDiffIcon(meta: ReturnType<typeof diffStyle>, isDimmed = false) {
         display:flex;
         align-items:center;
         justify-content:center;
-        font-size:17px;
+        font-size:16px;
         font-weight:700;
         line-height:1;
-        box-shadow:0 6px 18px rgba(15,23,42,0.20);
+        box-shadow:0 6px 18px rgba(15,23,42,0.18);
         opacity:${isDimmed ? 0.28 : 1};
       ">
         ${meta.symbol}
@@ -350,7 +350,7 @@ function FitBounds({
     const bounds = group.getBounds();
 
     if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [24, 24] });
+      map.fitBounds(bounds, { padding: [20, 20] });
     }
   }, [village, boundary, map]);
 
@@ -395,7 +395,7 @@ function MapLegend({ mode }: { mode: ClassifyMode }) {
         ];
 
   return (
-    <div className="absolute bottom-4 left-4 z-[1000] w-48 rounded-2xl border border-slate-200/90 bg-white/95 p-3.5 shadow-xl backdrop-blur">
+    <div className="absolute bottom-4 left-4 z-[1000] w-44 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-lg backdrop-blur">
       <div className="mb-2 text-sm font-semibold text-slate-900">
         {mode === "Case"
           ? "Case 2024"
@@ -411,14 +411,14 @@ function MapLegend({ mode }: { mode: ClassifyMode }) {
           >
             {"symbol" in item ? (
               <span
-                className="flex h-6 w-6 items-center justify-center rounded-full border border-white/50 text-sm font-bold text-white"
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-white/50 text-xs font-bold text-white"
                 style={{ backgroundColor: item.color }}
               >
                 {item.symbol}
               </span>
             ) : (
               <span
-                className="inline-block h-4 w-4 rounded-full border border-white/70 shadow-sm"
+                className="inline-block h-3.5 w-3.5 rounded-full border border-white/70 shadow-sm"
                 style={{ backgroundColor: item.color }}
               />
             )}
@@ -465,25 +465,25 @@ function MetricCard({
   }[accent];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className={`absolute inset-x-0 top-0 h-1.5 ${accentMap.bar}`} />
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className={`absolute inset-x-0 top-0 h-1 ${accentMap.bar}`} />
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        <div className="min-w-0">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             {title}
           </div>
-          <div className="mt-2 text-3xl font-semibold leading-none text-slate-900">
+          <div className="mt-1.5 text-2xl font-semibold leading-none text-slate-900">
             {value}
           </div>
         </div>
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${accentMap.badge}`}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${accentMap.badge}`}
         >
           KPI
         </span>
       </div>
       {subtitle ? (
-        <div className="mt-3 text-xs leading-5 text-slate-500">{subtitle}</div>
+        <div className="mt-2 text-[11px] leading-5 text-slate-500">{subtitle}</div>
       ) : null}
     </div>
   );
@@ -503,7 +503,66 @@ function getTrendStroke(history: HistoryPoint[]) {
   return "#64748B";
 }
 
-function IndividualVillageTrendCard({
+function getTrendPreviewCount(topCount: TopFilter, visibleLength: number) {
+  if (visibleLength === 0) return 0;
+  if (topCount === 10) return Math.min(10, visibleLength);
+  if (topCount === 20) return Math.min(8, visibleLength);
+  if (topCount === 30) return Math.min(6, visibleLength);
+  return 0;
+}
+
+function CompactSparkline({
+  history,
+  active,
+}: {
+  history: HistoryPoint[];
+  active?: boolean;
+}) {
+  const width = 110;
+  const height = 38;
+  const padX = 4;
+  const padY = 5;
+  const values = history.map((d) => d.case);
+  const maxValue = Math.max(...values, 1);
+  const minValue = Math.min(...values, 0);
+  const range = Math.max(1, maxValue - minValue);
+  const stroke = getTrendStroke(history);
+
+  const x = (i: number) =>
+    padX + (i / Math.max(1, history.length - 1)) * (width - padX * 2);
+
+  const y = (value: number) =>
+    padY + ((maxValue - value) / range) * (height - padY * 2);
+
+  const path = history
+    .map((point, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(point.case)}`)
+    .join(" ");
+
+  const last = history[history.length - 1];
+  const first = history[0];
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-10 w-28 shrink-0"
+      role="img"
+      aria-label="Village trend sparkline"
+    >
+      <path
+        d={path}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={active ? 2.6 : 2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={x(0)} cy={y(first.case)} r="2" fill={stroke} opacity="0.7" />
+      <circle cx={x(history.length - 1)} cy={y(last.case)} r="2.6" fill={stroke} />
+    </svg>
+  );
+}
+
+function TrendRow({
   village,
   rank,
   isActive,
@@ -514,157 +573,51 @@ function IndividualVillageTrendCard({
   isActive: boolean;
   onSelect: () => void;
 }) {
-  const width = 320;
-  const height = 180;
-  const padding = { top: 18, right: 16, bottom: 28, left: 34 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-  const years = village.history.map((d) => d.year);
-  const values = village.history.map((d) => d.case);
-  const maxValue = Math.max(...values, 1);
-  const range = maxValue || 1;
-  const stroke = getTrendStroke(village.history);
-
-  const x = (year: number) =>
-    padding.left +
-    ((year - years[0]) / (years[years.length - 1] - years[0])) * chartWidth;
-
-  const y = (value: number) =>
-    padding.top + ((maxValue - value) / range) * chartHeight;
-
-  const path = village.history
-    .map((point, i) => `${i === 0 ? "M" : "L"} ${x(point.year)} ${y(point.case)}`)
-    .join(" ");
-
-  const yTicks = 4;
+  const diffTone =
+    village.diff > 0
+      ? "bg-red-50 text-red-700"
+      : village.diff < 0
+      ? "bg-blue-50 text-blue-700"
+      : "bg-slate-100 text-slate-700";
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`rounded-2xl border p-3 text-left shadow-sm transition ${
+      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
         isActive
           ? "border-blue-300 bg-blue-50"
-          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Village #{rank}
-          </div>
-          <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+            #{rank}
+          </span>
+          <div className="truncate text-sm font-medium text-slate-900">
             {village.name}
-          </div>
-          <div className="mt-1 text-xs text-slate-500">
-            2024: {village.case2024} · 2023: {village.case2023}
           </div>
         </div>
 
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-            village.diff > 0
-              ? "bg-red-50 text-red-700"
-              : village.diff < 0
-              ? "bg-blue-50 text-blue-700"
-              : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {village.diff > 0
-            ? `↑ ${formatDiff(village.diff)}`
-            : village.diff < 0
-            ? `↓ ${formatDiff(village.diff)}`
-            : "– 0"}
-        </span>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+          <span>2024: {village.case2024}</span>
+          <span>2023: {village.case2023}</span>
+          <span>API: {village.api.toFixed(2)}</span>
+        </div>
       </div>
 
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-[170px] w-full"
-        role="img"
-        aria-label={`Case trend for ${village.name}`}
+      <CompactSparkline history={village.history} active={isActive} />
+
+      <span
+        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${diffTone}`}
       >
-        <rect x="0" y="0" width={width} height={height} fill="white" rx="16" />
-
-        {Array.from({ length: yTicks + 1 }).map((_, i) => {
-          const value = ((yTicks - i) / yTicks) * maxValue;
-          const yPos = padding.top + (i / yTicks) * chartHeight;
-
-          return (
-            <g key={i}>
-              <line
-                x1={padding.left}
-                y1={yPos}
-                x2={width - padding.right}
-                y2={yPos}
-                stroke="#E2E8F0"
-                strokeWidth="1"
-              />
-              <text
-                x={padding.left - 8}
-                y={yPos + 4}
-                textAnchor="end"
-                fontSize="10"
-                fill="#64748B"
-              >
-                {Math.round(value)}
-              </text>
-            </g>
-          );
-        })}
-
-        {years.map((year) => (
-          <g key={year}>
-            <line
-              x1={x(year)}
-              y1={padding.top}
-              x2={x(year)}
-              y2={height - padding.bottom}
-              stroke="#F8FAFC"
-              strokeWidth="1"
-            />
-            <text
-              x={x(year)}
-              y={height - 10}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#64748B"
-            >
-              {year}
-            </text>
-          </g>
-        ))}
-
-        <path
-          d={path}
-          fill="none"
-          stroke={stroke}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {village.history.map((point) => (
-          <g key={`${village.name}-${point.year}`}>
-            <circle
-              cx={x(point.year)}
-              cy={y(point.case)}
-              r="3.2"
-              fill={stroke}
-            />
-            <text
-              x={x(point.year)}
-              y={y(point.case) - 8}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#334155"
-              fontWeight="600"
-            >
-              {point.case}
-            </text>
-          </g>
-        ))}
-      </svg>
+        {village.diff > 0
+          ? `↑ ${formatDiff(village.diff)}`
+          : village.diff < 0
+          ? `↓ ${formatDiff(village.diff)}`
+          : "– 0"}
+      </span>
     </button>
   );
 }
@@ -798,7 +751,17 @@ export function MapTab() {
     };
   }, [pointFeatures, visibleVillages]);
 
-  const showTrendCards = topCount !== 999999 && visibleVillages.length > 0;
+  const trendPreviewCount = useMemo(
+    () => getTrendPreviewCount(topCount, visibleVillages.length),
+    [topCount, visibleVillages.length]
+  );
+
+  const trendPreviewVillages = useMemo(
+    () => visibleVillages.slice(0, trendPreviewCount),
+    [visibleVillages, trendPreviewCount]
+  );
+
+  const showTrendPreview = topCount !== 999999 && trendPreviewVillages.length > 0;
 
   const rightPanelTitle =
     mode === "Case"
@@ -814,7 +777,7 @@ export function MapTab() {
 
   const boundaryStyle = () => ({
     color: "#64748B",
-    weight: 1.3,
+    weight: 1.2,
     fillOpacity: 0,
     opacity: 0.95,
     dashArray: "5 5",
@@ -822,22 +785,22 @@ export function MapTab() {
 
   return (
     <div className="panel overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/70 shadow-sm">
-      <div className="border-b border-slate-200 bg-white px-5 py-5">
-        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
+      <div className="border-b border-slate-200 bg-white px-4 py-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-1">
             <div className="text-xl font-semibold tracking-tight text-slate-900">
               Village Map Panel
             </div>
             <div className="max-w-3xl text-sm leading-6 text-slate-600">
               Explore Lama villages by case burden, API, or year-on-year change.
-              Click villages on the map or trend cards to focus them.
+              Click villages on the map or trend rows to focus them.
             </div>
             <div className="text-[11px] text-slate-500">{helperText}</div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Color & ranking by
               </div>
               <select
@@ -851,8 +814,8 @@ export function MapTab() {
               </select>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Show villages
               </div>
               <select
@@ -867,8 +830,8 @@ export function MapTab() {
               </select>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Base map
               </div>
               <select
@@ -885,7 +848,7 @@ export function MapTab() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
             Total villages: {summary.totalVillages}
           </span>
@@ -901,14 +864,14 @@ export function MapTab() {
         </div>
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="relative h-[780px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="relative h-[760px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <MapContainer
                 center={[22.1, 92.1]}
                 zoom={10}
@@ -963,14 +926,14 @@ export function MapTab() {
                         layer.on({
                           mouseover: (e: any) => {
                             e.target.setStyle({
-                              weight: 2,
+                              weight: 1.8,
                               color: "#334155",
                               dashArray: "",
                             });
                           },
                           mouseout: (e: any) => {
                             e.target.setStyle({
-                              weight: 1.3,
+                              weight: 1.2,
                               color: "#64748B",
                               dashArray: "5 5",
                             });
@@ -1168,13 +1131,13 @@ export function MapTab() {
               <MapLegend mode={mode} />
             </div>
 
-            <div className="flex h-[780px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="text-lg font-semibold text-slate-900">Insights</div>
+            <div className="flex h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50 px-3.5 py-3">
+                <div className="text-base font-semibold text-slate-900">Insights</div>
                 <div className="text-sm text-slate-600">{rightPanelTitle}</div>
               </div>
 
-              <div className="space-y-4 overflow-y-auto p-4">
+              <div className="space-y-3 overflow-y-auto p-3">
                 <div className="grid grid-cols-2 gap-3">
                   <MetricCard
                     title="Villages shown"
@@ -1203,30 +1166,35 @@ export function MapTab() {
                     }
                     subtitle={
                       mode === "Case"
-                        ? "Total reported cases across visible villages."
+                        ? "Across currently shown villages."
                         : mode === "API"
-                        ? "Mean API for currently shown villages."
-                        : "Displayed villages with higher cases than 2023."
+                        ? "Mean API across visible villages."
+                        : "Shown villages higher than 2023."
                     }
                     accent={mode === "API" ? "teal" : mode === "Diff" ? "red" : "orange"}
                   />
                 </div>
 
-                {showTrendCards && (
+                {showTrendPreview ? (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="mb-3">
-                      <div className="text-sm font-semibold text-slate-900">
-                        Individual village case trends
+                    <div className="mb-2.5 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          Trend preview
+                        </div>
+                        <div className="mt-0.5 text-[11px] leading-5 text-slate-500">
+                          Compact case trends for highest-ranked villages.
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs leading-5 text-slate-500">
-                        Click any chart to highlight that village on the map.
-                      </div>
+                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-600">
+                        Showing {trendPreviewVillages.length}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {visibleVillages.map((village, idx) => (
-                        <IndividualVillageTrendCard
-                          key={`${village.name}-${idx}-trend-card`}
+                    <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                      {trendPreviewVillages.map((village, idx) => (
+                        <TrendRow
+                          key={`${village.name}-${idx}-trend-row`}
                           village={village}
                           rank={idx + 1}
                           isActive={selectedVillage?.index === village.index}
@@ -1235,14 +1203,24 @@ export function MapTab() {
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {mode === "Diff" && (
-                  <div className="text-[11px] text-slate-500">
-                    Villages with decrease:{" "}
-                    <span className="font-medium text-blue-700">{summary.decreaseCount}</span> •
-                    Unchanged:{" "}
-                    <span className="font-medium text-slate-700"> {summary.sameCount}</span>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Change summary
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700">
+                        Increase: {summary.increaseCount}
+                      </span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-700">
+                        Decrease: {summary.decreaseCount}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                        Unchanged: {summary.sameCount}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
