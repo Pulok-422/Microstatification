@@ -1,5 +1,5 @@
 // MapTab.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CircleMarker,
   GeoJSON,
@@ -675,7 +675,6 @@ export function MapTab() {
   const [mode, setMode] = useState<ClassifyMode>("Case");
   const [topCount, setTopCount] = useState<TopFilter>(999999);
   const [baseMap, setBaseMap] = useState<BaseMap>("light");
-  const [search, setSearch] = useState("");
   const [selectedVillageIndex, setSelectedVillageIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
 
@@ -787,14 +786,6 @@ export function MapTab() {
     const decreaseCount = visibleVillages.filter((item) => item.diff < 0).length;
     const sameCount = visibleVillages.filter((item) => item.diff === 0).length;
 
-    const maxCaseVillage = [...rankedVillages].sort(
-      (a, b) => b.case2024 - a.case2024
-    )[0];
-    const maxApiVillage = [...rankedVillages].sort((a, b) => b.api - a.api)[0];
-    const maxDiffVillage = [...rankedVillages].sort(
-      (a, b) => Math.abs(b.diff) - Math.abs(a.diff)
-    )[0];
-
     return {
       totalVillages,
       totalCase2024,
@@ -804,34 +795,8 @@ export function MapTab() {
       increaseCount,
       decreaseCount,
       sameCount,
-      maxCaseVillage,
-      maxApiVillage,
-      maxDiffVillage,
     };
-  }, [pointFeatures, visibleVillages, rankedVillages]);
-
-  const searchTerm = search.trim().toLowerCase();
-
-  const listVillages = useMemo(() => {
-    const base = topCount === 999999 ? rankedVillages.slice(0, 20) : visibleVillages;
-    if (!searchTerm) return base;
-    return base.filter((item) => {
-      const props = item.feature.properties || {};
-      return [
-        item.name,
-        props.VIL_N_E,
-        props.union,
-        props.UNION,
-        props.upazila,
-        props.district,
-        props.id,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(searchTerm);
-    });
-  }, [rankedVillages, visibleVillages, topCount, searchTerm]);
+  }, [pointFeatures, visibleVillages]);
 
   const showTrendCards = topCount !== 999999 && visibleVillages.length > 0;
 
@@ -844,7 +809,7 @@ export function MapTab() {
 
   const helperText =
     topCount === 999999
-      ? "All villages are shown. Use search or click a ranked row to focus one village."
+      ? "All villages are shown. Click any village on the map to focus it."
       : `Top villages are selected based on the current color mode: ${mode}.`;
 
   const boundaryStyle = () => ({
@@ -855,8 +820,6 @@ export function MapTab() {
     dashArray: "5 5",
   });
 
-  const visibleSet = useMemo(() => new Set(visibleVillages.map((item) => item.index)), [visibleVillages]);
-
   return (
     <div className="panel overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/70 shadow-sm">
       <div className="border-b border-slate-200 bg-white px-5 py-5">
@@ -866,7 +829,8 @@ export function MapTab() {
               Village Map Panel
             </div>
             <div className="max-w-3xl text-sm leading-6 text-slate-600">
-              Explore Lama villages by case burden, API, or year-on-year change. Search a village, click a trend card, or select a ranked row to focus that village on the map.
+              Explore Lama villages by case burden, API, or year-on-year change.
+              Click villages on the map or trend cards to focus them.
             </div>
             <div className="text-[11px] text-slate-500">{helperText}</div>
           </div>
@@ -1248,120 +1212,6 @@ export function MapTab() {
                   />
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">Find village</div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        Search by village name or administrative fields.
-                      </div>
-                    </div>
-                    {search ? (
-                      <button
-                        className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200"
-                        onClick={() => setSearch("")}
-                      >
-                        Clear
-                      </button>
-                    ) : null}
-                  </div>
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Type to search village..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
-                  />
-                </div>
-
-                {selectedVillage ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                          Selected village
-                        </div>
-                        <div className="mt-2 truncate text-base font-semibold text-slate-900">
-                          {selectedVillage.name}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-500">
-                          {getVillageLocation(selectedVillage.feature.properties || {}) ||
-                            "Administrative location not available"}
-                        </div>
-                      </div>
-
-                      {mode === "Diff" ? (
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-                            selectedVillage.diff > 0
-                              ? "bg-red-50 text-red-700"
-                              : selectedVillage.diff < 0
-                              ? "bg-blue-50 text-blue-700"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {selectedVillage.diff > 0
-                            ? `↑ ${formatDiff(selectedVillage.diff)}`
-                            : selectedVillage.diff < 0
-                            ? `↓ ${formatDiff(selectedVillage.diff)}`
-                            : "– 0"}
-                        </span>
-                      ) : mode === "API" ? (
-                        <span className="shrink-0 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
-                          API {selectedVillage.api.toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">
-                          {selectedVillage.case2024} cases
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Case 2024</div>
-                        <div className="mt-2 text-lg font-semibold text-slate-900">
-                          {selectedVillage.case2024}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Case 2023</div>
-                        <div className="mt-2 text-lg font-semibold text-slate-900">
-                          {selectedVillage.case2023}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-slate-500">API</div>
-                        <div className="mt-2 text-lg font-semibold text-slate-900">
-                          {selectedVillage.api.toFixed(2)}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Difference</div>
-                        <div className="mt-2 text-lg font-semibold text-slate-900">
-                          {formatDiff(selectedVillage.diff)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(mode === "Case" || mode === "API" || mode === "Diff") && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Key insight
-                    </div>
-                    <div className="mt-2 text-sm text-slate-700">
-                      {mode === "Case" && summary.maxCaseVillage
-                        ? `${summary.maxCaseVillage.name} has the highest current case burden in the ranking.`
-                        : mode === "API" && summary.maxApiVillage
-                        ? `${summary.maxApiVillage.name} has the highest API in the ranking.`
-                        : mode === "Diff" && summary.maxDiffVillage
-                        ? `${summary.maxDiffVillage.name} shows the largest absolute year-on-year change.`
-                        : "No ranked village is available for the current filter."}
-                    </div>
-                  </div>
-                )}
-
                 {showTrendCards && (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="mb-3">
@@ -1369,7 +1219,7 @@ export function MapTab() {
                         Individual village case trends
                       </div>
                       <div className="mt-1 text-xs leading-5 text-slate-500">
-                        Click any chart to highlight that village on the map and in the ranked list.
+                        Click any chart to highlight that village on the map.
                       </div>
                     </div>
 
@@ -1387,88 +1237,12 @@ export function MapTab() {
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-900">
-                      {search ? "Matching villages" : topCount === 999999 ? "Top 20 villages" : "Ranked villages"}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      Ranked by{" "}
-                      {mode === "Case"
-                        ? "Case"
-                        : mode === "API"
-                        ? "API"
-                        : "absolute year-on-year change"}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {listVillages.map((item, idx) => {
-                      const isSelected = selectedVillage?.index === item.index;
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedVillageIndex(item.index)}
-                          key={`${item.name}-${idx}`}
-                          className={`w-full rounded-2xl border px-3.5 py-3 text-left transition ${
-                            isSelected
-                              ? "border-blue-300 bg-blue-50"
-                              : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate font-medium text-slate-900">
-                                #{idx + 1} {item.name}
-                              </div>
-                              <div className="mt-1 text-xs leading-5 text-slate-500">
-                                Case 2024: {item.case2024} · Case 2023: {item.case2023} · API:{" "}
-                                {item.api.toFixed(2)}
-                              </div>
-                            </div>
-
-                            {mode === "Diff" ? (
-                              <span
-                                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-                                  item.diff > 0
-                                    ? "bg-red-50 text-red-700"
-                                    : item.diff < 0
-                                    ? "bg-blue-50 text-blue-700"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {item.diff > 0
-                                  ? `↑ ${formatDiff(item.diff)}`
-                                  : item.diff < 0
-                                  ? `↓ ${formatDiff(item.diff)}`
-                                  : "– 0"}
-                              </span>
-                            ) : mode === "API" ? (
-                              <span className="shrink-0 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
-                                API {item.api.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">
-                                {item.case2024} cases
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {!listVillages.length ? (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                        No village matches your search.
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
                 {mode === "Diff" && (
                   <div className="text-[11px] text-slate-500">
-                    Villages with decrease: <span className="font-medium text-blue-700">{summary.decreaseCount}</span> •
-                    Unchanged: <span className="font-medium text-slate-700"> {summary.sameCount}</span>
+                    Villages with decrease:{" "}
+                    <span className="font-medium text-blue-700">{summary.decreaseCount}</span> •
+                    Unchanged:{" "}
+                    <span className="font-medium text-slate-700"> {summary.sameCount}</span>
                   </div>
                 )}
               </div>
