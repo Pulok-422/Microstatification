@@ -82,15 +82,15 @@ export function FilterBar() {
   }
 
   return (
-    <div className="sticky top-0 z-30 border-b border-border bg-card px-4 py-3 space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-10 gap-3 items-end">
+    <div className="sticky top-0 z-30 border-b border-border bg-card px-4 py-1.5 space-y-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-10 gap-2 items-end">
         <div className="min-w-0">
-          <div className="filter-label mb-1">Year</div>
+          <div className="filter-label mb-0.5">Year</div>
           <Select
             value={String(filters.year)}
             onValueChange={(v) => updateFilter("year", Number(v))}
           >
-            <SelectTrigger className="h-9 w-full text-xs">
+            <SelectTrigger className="h-7 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -104,12 +104,12 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">From</div>
+          <div className="filter-label mb-0.5">From</div>
           <Select
             value={String(filters.monthStart)}
             onValueChange={(v) => updateFilter("monthStart", Number(v))}
           >
-            <SelectTrigger className="h-9 w-full text-xs">
+            <SelectTrigger className="h-7 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -123,12 +123,12 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">To</div>
+          <div className="filter-label mb-0.5">To</div>
           <Select
             value={String(filters.monthEnd)}
             onValueChange={(v) => updateFilter("monthEnd", Number(v))}
           >
-            <SelectTrigger className="h-9 w-full text-xs">
+            <SelectTrigger className="h-7 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -142,7 +142,7 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">District</div>
+          <div className="filter-label mb-0.5">District</div>
           <MultiSelect
             options={districts}
             selected={filters.districts}
@@ -152,7 +152,7 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">Upazila</div>
+          <div className="filter-label mb-0.5">Upazila</div>
           <MultiSelect
             options={upazilas}
             selected={filters.upazilas}
@@ -162,7 +162,7 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">Union</div>
+          <div className="filter-label mb-0.5">Union</div>
           <MultiSelect
             options={unions}
             selected={filters.unions}
@@ -172,11 +172,11 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0 xl:col-span-2">
-          <div className="filter-label mb-1">Village Search</div>
+          <div className="filter-label mb-0.5">Village Search</div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
             <Input
-              className="h-9 w-full pl-8 text-xs"
+              className="h-7 w-full pl-7 text-xs"
               placeholder="Search village name or code..."
               value={filters.villageSearch}
               onChange={(e) => updateFilter("villageSearch", e.target.value)}
@@ -185,7 +185,7 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">Designation</div>
+          <div className="filter-label mb-0.5">Designation</div>
           <MultiSelect
             options={["SK(H)", "SHW(H)"]}
             selected={filters.designations}
@@ -195,14 +195,14 @@ export function FilterBar() {
         </div>
 
         <div className="min-w-0">
-          <div className="filter-label mb-1">Border</div>
+          <div className="filter-label mb-0.5">Border</div>
           <Select
             value={filters.borderFilter}
             onValueChange={(v: "all" | "border" | "non-border") =>
               updateFilter("borderFilter", v)
             }
           >
-            <SelectTrigger className="h-9 w-full text-xs">
+            <SelectTrigger className="h-7 w-full text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover z-50">
@@ -222,11 +222,11 @@ export function FilterBar() {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         {chips.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {chips.map((c, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-[11px] text-foreground"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground"
               >
                 {c.label}
                 <button
@@ -239,7 +239,7 @@ export function FilterBar() {
             ))}
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[11px] text-muted-foreground">
             No filters applied
           </div>
         )}
@@ -247,10 +247,10 @@ export function FilterBar() {
         <Button
           variant="outline"
           size="sm"
-          className="h-9 text-xs shrink-0"
+          className="h-7 shrink-0 text-xs"
           onClick={resetFilters}
         >
-          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+          <RotateCcw className="mr-1 h-3 w-3" />
           Reset Filters
         </Button>
       </div>
